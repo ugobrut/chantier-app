@@ -1,0 +1,2756 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ChantierTrack</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='15' y='5' width='70' height='90' rx='10' fill='%232563eb'/><circle cx='50' cy='45' r='14' fill='white'/><rect x='35' y='75' width='30' height='20' rx='4' fill='white'/></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>body{margin:0;padding:0;}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef, useMemo } = React;
+
+// ─── Data Store ───
+const MOCK_DATA = {
+  employees: [
+    { id: 1, name: "Lucas Martin", role: "Maçon", avatar: "LM", team: "Équipe A" },
+    { id: 2, name: "Thomas Dubois", role: "Électricien", avatar: "TD", team: "Équipe A" },
+    { id: 3, name: "Julie Bernard", role: "Plombier", avatar: "JB", team: "Équipe B" },
+    { id: 4, name: "Marc Petit", role: "Peintre", avatar: "MP", team: "Équipe B" },
+    { id: 5, name: "Sophie Leroy", role: "Chef d'équipe", avatar: "SL", team: "Équipe A" },
+    { id: 6, name: "Antoine Moreau", role: "Carreleur", avatar: "AM", team: "Équipe C" },
+  ],
+  chantiers: [
+    { id: 1, name: "Résidence Les Oliviers", address: "12 Rue des Lilas, Lyon", status: "En cours", teams: ["Équipe A"], lat: 45.764, lng: 4.8357, color: "#2563eb" },
+    { id: 2, name: "Bureau Parc Technologique", address: "45 Av. Innovation, Villeurbanne", status: "En cours", teams: ["Équipe B"], lat: 45.7676, lng: 4.8799, color: "#059669" },
+    { id: 3, name: "École Maternelle Soleil", address: "8 Pl. de la République, Caluire", status: "Planifié", teams: ["Équipe C"], lat: 45.795, lng: 4.847, color: "#d97706" },
+  ],
+  pointages: [
+    { id: 1, employeeId: 1, chantierId: 1, date: "2026-03-26", arrival: "07:32", departure: null, photo: true, lat: 45.764, lng: 4.8357, status: "En cours" },
+    { id: 2, employeeId: 2, chantierId: 1, date: "2026-03-26", arrival: "07:45", departure: null, photo: true, lat: 45.764, lng: 4.836, status: "En cours" },
+    { id: 3, employeeId: 5, chantierId: 1, date: "2026-03-26", arrival: "07:15", departure: null, photo: true, lat: 45.764, lng: 4.8357, status: "En cours" },
+    { id: 4, employeeId: 3, chantierId: 2, date: "2026-03-26", arrival: "08:00", departure: "12:00", photo: true, lat: 45.7676, lng: 4.8799, status: "Terminé" },
+    { id: 5, employeeId: 4, chantierId: 2, date: "2026-03-26", arrival: "08:15", departure: null, photo: false, lat: 45.768, lng: 4.881, status: "Anomalie" },
+    { id: 6, employeeId: 1, chantierId: 1, date: "2026-03-25", arrival: "07:30", departure: "16:30", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    { id: 7, employeeId: 1, chantierId: 1, date: "2026-03-24", arrival: "07:28", departure: "16:45", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    { id: 8, employeeId: 1, chantierId: 1, date: "2026-03-23", arrival: "07:35", departure: "16:30", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    // More historical data for analytics
+    { id: 9, employeeId: 2, chantierId: 1, date: "2026-03-25", arrival: "07:40", departure: "16:15", photo: true, lat: 45.764, lng: 4.836, status: "Terminé" },
+    { id: 10, employeeId: 2, chantierId: 1, date: "2026-03-24", arrival: "07:50", departure: "16:30", photo: true, lat: 45.764, lng: 4.836, status: "Terminé" },
+    { id: 11, employeeId: 2, chantierId: 1, date: "2026-03-23", arrival: "07:35", departure: "16:00", photo: true, lat: 45.764, lng: 4.836, status: "Terminé" },
+    { id: 12, employeeId: 5, chantierId: 1, date: "2026-03-25", arrival: "07:10", departure: "16:45", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    { id: 13, employeeId: 5, chantierId: 1, date: "2026-03-24", arrival: "07:05", departure: "16:30", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    { id: 14, employeeId: 5, chantierId: 1, date: "2026-03-23", arrival: "07:15", departure: "16:15", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    { id: 15, employeeId: 3, chantierId: 2, date: "2026-03-25", arrival: "08:10", departure: "16:00", photo: true, lat: 45.7676, lng: 4.8799, status: "Terminé" },
+    { id: 16, employeeId: 3, chantierId: 2, date: "2026-03-24", arrival: "08:05", departure: "16:30", photo: true, lat: 45.7676, lng: 4.8799, status: "Terminé" },
+    { id: 17, employeeId: 3, chantierId: 2, date: "2026-03-23", arrival: "08:00", departure: "16:15", photo: true, lat: 45.7676, lng: 4.8799, status: "Terminé" },
+    { id: 18, employeeId: 4, chantierId: 2, date: "2026-03-25", arrival: "08:20", departure: "16:10", photo: true, lat: 45.768, lng: 4.881, status: "Terminé" },
+    { id: 19, employeeId: 4, chantierId: 2, date: "2026-03-24", arrival: "08:30", departure: "16:00", photo: true, lat: 45.768, lng: 4.881, status: "Terminé" },
+    { id: 20, employeeId: 4, chantierId: 2, date: "2026-03-23", arrival: "08:15", departure: "16:30", photo: true, lat: 45.768, lng: 4.881, status: "Terminé" },
+    // Week S12 (16-20 mars)
+    { id: 21, employeeId: 1, chantierId: 1, date: "2026-03-16", arrival: "07:30", departure: "16:30", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    { id: 22, employeeId: 1, chantierId: 1, date: "2026-03-17", arrival: "07:25", departure: "16:45", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    { id: 23, employeeId: 1, chantierId: 1, date: "2026-03-18", arrival: "07:40", departure: "16:30", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    { id: 24, employeeId: 1, chantierId: 1, date: "2026-03-19", arrival: "07:30", departure: "16:15", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    { id: 25, employeeId: 1, chantierId: 1, date: "2026-03-20", arrival: "07:35", departure: "12:00", photo: true, lat: 45.764, lng: 4.8357, status: "Terminé" },
+    { id: 26, employeeId: 2, chantierId: 1, date: "2026-03-16", arrival: "07:45", departure: "16:15", photo: true, lat: 45.764, lng: 4.836, status: "Terminé" },
+    { id: 27, employeeId: 2, chantierId: 1, date: "2026-03-17", arrival: "07:50", departure: "16:30", photo: true, lat: 45.764, lng: 4.836, status: "Terminé" },
+    { id: 28, employeeId: 2, chantierId: 1, date: "2026-03-18", arrival: "07:40", departure: "16:00", photo: true, lat: 45.764, lng: 4.836, status: "Terminé" },
+    { id: 29, employeeId: 3, chantierId: 2, date: "2026-03-16", arrival: "08:00", departure: "16:00", photo: true, lat: 45.7676, lng: 4.8799, status: "Terminé" },
+    { id: 30, employeeId: 3, chantierId: 2, date: "2026-03-17", arrival: "08:10", departure: "16:30", photo: true, lat: 45.7676, lng: 4.8799, status: "Terminé" },
+    { id: 31, employeeId: 3, chantierId: 2, date: "2026-03-18", arrival: "08:05", departure: "16:15", photo: true, lat: 45.7676, lng: 4.8799, status: "Terminé" },
+    { id: 32, employeeId: 4, chantierId: 2, date: "2026-03-16", arrival: "08:15", departure: "16:00", photo: true, lat: 45.768, lng: 4.881, status: "Terminé" },
+    { id: 33, employeeId: 4, chantierId: 2, date: "2026-03-17", arrival: "08:20", departure: "16:15", photo: true, lat: 45.768, lng: 4.881, status: "Terminé" },
+  ],
+  conges: [
+    { id: 1, employeeId: 1, type: "CP", dateStart: "2026-04-13", dateEnd: "2026-04-17", status: "En attente", reason: "Vacances familiales" },
+    { id: 2, employeeId: 3, type: "RTT", dateStart: "2026-04-06", dateEnd: "2026-04-06", status: "Validé", reason: "Personnel" },
+    { id: 3, employeeId: 2, type: "CP", dateStart: "2026-04-20", dateEnd: "2026-04-24", status: "En attente", reason: "Voyage" },
+    { id: 4, employeeId: 5, type: "CP", dateStart: "2026-04-01", dateEnd: "2026-04-03", status: "Validé", reason: "Famille" },
+    { id: 5, employeeId: 4, type: "RTT", dateStart: "2026-04-09", dateEnd: "2026-04-10", status: "Validé", reason: "Personnel" },
+    { id: 6, employeeId: 6, type: "CP", dateStart: "2026-04-27", dateEnd: "2026-04-30", status: "En attente", reason: "Déménagement" },
+  ],
+  planningAssignments: [
+    { id: 1, employeeId: 1, chantierId: 1, date: "2026-03-23" },
+    { id: 2, employeeId: 1, chantierId: 1, date: "2026-03-24" },
+    { id: 3, employeeId: 1, chantierId: 1, date: "2026-03-25" },
+    { id: 4, employeeId: 1, chantierId: 1, date: "2026-03-26" },
+    { id: 5, employeeId: 1, chantierId: 1, date: "2026-03-27" },
+    { id: 6, employeeId: 2, chantierId: 1, date: "2026-03-23" },
+    { id: 7, employeeId: 2, chantierId: 1, date: "2026-03-24" },
+    { id: 8, employeeId: 2, chantierId: 1, date: "2026-03-25" },
+    { id: 9, employeeId: 2, chantierId: 1, date: "2026-03-26" },
+    { id: 10, employeeId: 2, chantierId: 1, date: "2026-03-27" },
+    { id: 11, employeeId: 5, chantierId: 1, date: "2026-03-23" },
+    { id: 12, employeeId: 5, chantierId: 1, date: "2026-03-24" },
+    { id: 13, employeeId: 5, chantierId: 1, date: "2026-03-25" },
+    { id: 14, employeeId: 5, chantierId: 1, date: "2026-03-26" },
+    { id: 15, employeeId: 5, chantierId: 1, date: "2026-03-27" },
+    { id: 16, employeeId: 3, chantierId: 2, date: "2026-03-23" },
+    { id: 17, employeeId: 3, chantierId: 2, date: "2026-03-24" },
+    { id: 18, employeeId: 3, chantierId: 2, date: "2026-03-25" },
+    { id: 19, employeeId: 3, chantierId: 2, date: "2026-03-26" },
+    { id: 20, employeeId: 3, chantierId: 2, date: "2026-03-27" },
+    { id: 21, employeeId: 4, chantierId: 2, date: "2026-03-23" },
+    { id: 22, employeeId: 4, chantierId: 2, date: "2026-03-24" },
+    { id: 23, employeeId: 4, chantierId: 2, date: "2026-03-25" },
+    { id: 24, employeeId: 4, chantierId: 2, date: "2026-03-26" },
+    { id: 25, employeeId: 4, chantierId: 2, date: "2026-03-27" },
+    { id: 26, employeeId: 6, chantierId: 3, date: "2026-03-30" },
+    { id: 27, employeeId: 6, chantierId: 3, date: "2026-03-31" },
+    { id: 28, employeeId: 6, chantierId: 3, date: "2026-04-01" },
+    { id: 29, employeeId: 1, chantierId: 1, date: "2026-03-30" },
+    { id: 30, employeeId: 1, chantierId: 1, date: "2026-03-31" },
+    { id: 31, employeeId: 2, chantierId: 1, date: "2026-03-30" },
+    { id: 32, employeeId: 2, chantierId: 1, date: "2026-03-31" },
+    { id: 33, employeeId: 3, chantierId: 2, date: "2026-03-30" },
+    { id: 34, employeeId: 3, chantierId: 2, date: "2026-03-31" },
+    { id: 35, employeeId: 4, chantierId: 2, date: "2026-03-30" },
+    { id: 36, employeeId: 4, chantierId: 2, date: "2026-03-31" },
+    { id: 37, employeeId: 1, chantierId: 1, date: "2026-04-06" },
+    { id: 38, employeeId: 1, chantierId: 1, date: "2026-04-07" },
+    { id: 39, employeeId: 1, chantierId: 1, date: "2026-04-08" },
+    { id: 40, employeeId: 1, chantierId: 1, date: "2026-04-09" },
+    { id: 41, employeeId: 1, chantierId: 1, date: "2026-04-10" },
+  ],
+  planning: [
+    { day: "Lun 23", chantier: "Résidence Les Oliviers", hours: "07:00 - 16:30" },
+    { day: "Mar 24", chantier: "Résidence Les Oliviers", hours: "07:00 - 16:30" },
+    { day: "Mer 25", chantier: "Résidence Les Oliviers", hours: "07:00 - 16:30" },
+    { day: "Jeu 26", chantier: "Résidence Les Oliviers", hours: "07:00 - 16:30" },
+    { day: "Ven 27", chantier: "Résidence Les Oliviers", hours: "07:00 - 12:00" },
+  ],
+  soldes: { cp: 18, rtt: 5, anciennete: 2, maladie: 0 },
+  anomalies: [
+    { id: 1, employeeId: 4, type: "Photo manquante", date: "2026-03-26", chantier: "Bureau Parc Technologique", severity: "warning" },
+    { id: 2, employeeId: 4, type: "Position hors zone", date: "2026-03-26", chantier: "Bureau Parc Technologique", severity: "error" },
+    { id: 3, employeeId: 2, type: "Retard > 15min", date: "2026-03-26", chantier: "Résidence Les Oliviers", severity: "warning" },
+  ],
+};
+
+function ds(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function inRange(dateStr, start, end) { return dateStr >= start && dateStr <= end; }
+
+const I = {
+  clock: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  calendar: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  sun: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
+  mapPin: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  camera: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+  check: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>,
+  checkSm: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>,
+  checkCircle: <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+  x: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  user: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  users: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  building: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/></svg>,
+  alert: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  chevL: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>,
+  chevR: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>,
+  plus: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  home: <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  send: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+  logOut: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  barChart: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>,
+  image: <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
+  play: <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+  stop: <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>,
+  swap: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>,
+  trash: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+  calPlus: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="20"/><line x1="9" y1="17" x2="15" y2="17"/></svg>,
+  edit: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  task: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>,
+  taskSm: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>,
+  mic: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
+  micOff: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.12 1.5-.35 2.18"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
+  sparkle: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>,
+  fileText: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+};
+
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Space+Mono:wght@400;700&display=swap');
+:root{--bg:#F8F7F4;--bgc:#FFF;--tp:#1A1A1A;--ts:#6B6B6B;--tt:#9E9E9E;--ac:#2563EB;--al:#EFF6FF;--as:#DBEAFE;--ok:#059669;--ol:#ECFDF5;--wa:#D97706;--wl:#FFFBEB;--or:#EA580C;--orl:#FFF7ED;--da:#DC2626;--dl:#FEF2F2;--bd:#E8E8E5;--bl:#F0F0ED;--ssm:0 1px 2px rgba(0,0,0,.04);--smd:0 4px 12px rgba(0,0,0,.06);--rs:10px;--rm:14px;--rl:20px;--rf:50px;--f:'DM Sans',-apple-system,sans-serif;--fm:'Space Mono',monospace}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--f);background:var(--bg);color:var(--tp);-webkit-font-smoothing:antialiased}
+.app{max-width:430px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;overflow-x:hidden}
+.login{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:linear-gradient(165deg,#1e3a5f 0%,#0f172a 50%,#1a1a2e 100%);position:relative;overflow:hidden}
+.login::before{content:'';position:absolute;top:-50%;right:-30%;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(37,99,235,.15),transparent 70%)}
+.login::after{content:'';position:absolute;bottom:-20%;left:-20%;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(5,150,105,.1),transparent 70%)}
+.l-logo{width:80px;height:80px;background:linear-gradient(135deg,#2563eb,#3b82f6);border-radius:22px;display:flex;align-items:center;justify-content:center;margin-bottom:28px;z-index:1;box-shadow:0 12px 40px rgba(37,99,235,.3)}
+.l-title{font-size:32px;font-weight:700;color:#fff;margin-bottom:6px;z-index:1;letter-spacing:-.5px}
+.l-sub{font-size:15px;color:rgba(255,255,255,.5);margin-bottom:48px;z-index:1}
+.l-btns{display:flex;flex-direction:column;gap:14px;width:100%;max-width:320px;z-index:1}
+.l-btn{display:flex;align-items:center;gap:14px;padding:18px 22px;border-radius:var(--rm);border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);backdrop-filter:blur(20px);color:#fff;font-size:16px;font-weight:500;cursor:pointer;transition:all .25s;font-family:var(--f)}
+.l-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);transform:translateY(-2px)}
+.l-ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.l-ico.emp{background:linear-gradient(135deg,#059669,#34d399)}
+.l-ico.mgr{background:linear-gradient(135deg,#2563eb,#60a5fa)}
+.l-txt{display:flex;flex-direction:column;gap:2px}
+.l-role{font-size:12px;color:rgba(255,255,255,.45);font-weight:400}
+.l-back{position:absolute;top:24px;left:24px;background:none;border:none;color:rgba(255,255,255,.5);font-family:var(--f);font-size:13px;font-weight:500;cursor:pointer;z-index:1;transition:color .2s}
+.l-back:hover{color:#fff}
+.hd{padding:16px 20px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--bgc);border-bottom:1px solid var(--bl);position:sticky;top:0;z-index:100}
+.hd-l{display:flex;align-items:center;gap:12px}
+.hd-av{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
+.hd-i h2{font-size:16px;font-weight:600;letter-spacing:-.3px}
+.hd-i span{font-size:12px;color:var(--tt)}
+.hd-a{width:38px;height:38px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ts);transition:all .2s}
+.bn{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bgc);border-top:1px solid var(--bl);display:flex;padding:6px 8px 28px;z-index:100}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;cursor:pointer;color:var(--tt);transition:color .2s;background:none;border:none;font-family:var(--f);position:relative}
+.ni.a{color:var(--ac)}
+.ni.a::before{content:'';position:absolute;top:0;width:24px;height:3px;border-radius:0 0 3px 3px;background:var(--ac)}
+.nl{font-size:10px;font-weight:500}
+.nb{position:absolute;top:2px;right:calc(50% - 18px);width:8px;height:8px;border-radius:50%;background:var(--da);border:2px solid var(--bgc)}
+.pg{padding:16px 20px 100px}
+.cd{background:var(--bgc);border-radius:var(--rm);border:1px solid var(--bl);padding:18px;margin-bottom:12px;box-shadow:var(--ssm)}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.ct{font-size:13px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.8px}
+.ci-hero{text-align:center;padding:24px 0 20px}
+.ci-time{font-family:var(--fm);font-size:52px;font-weight:700;letter-spacing:-2px;margin-bottom:4px}
+.ci-date{font-size:14px;color:var(--tt);margin-bottom:28px}
+.ci-wrap{position:relative;display:inline-block}
+.ci-btn{width:160px;height:160px;border-radius:50%;border:none;cursor:pointer;font-family:var(--f);font-size:17px;font-weight:600;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;z-index:2}
+.ci-btn.go{background:linear-gradient(145deg,#059669,#10b981);box-shadow:0 8px 30px rgba(5,150,105,.35)}
+.ci-btn.end{background:linear-gradient(145deg,#DC2626,#EF4444);box-shadow:0 8px 30px rgba(220,38,38,.35)}
+.ci-btn:hover{transform:scale(1.04)}.ci-btn:active{transform:scale(.97)}
+.ci-ring{position:absolute;inset:-8px;border-radius:50%;border:2.5px solid;opacity:.2;animation:pr 2.5s ease-in-out infinite}
+.ci-ring.go{border-color:#059669}.ci-ring.end{border-color:#DC2626}
+@keyframes pr{0%,100%{transform:scale(1);opacity:.2}50%{transform:scale(1.08);opacity:.05}}
+.ci-st{margin-top:20px;padding:12px 20px;border-radius:var(--rf);display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+.ci-st.on{background:var(--ol);color:var(--ok)}.ci-st.off{background:var(--bg);color:var(--tt)}
+.ci-dot{width:8px;height:8px;border-radius:50%}
+.ci-dot.on{background:var(--ok);animation:bk 2s ease infinite}.ci-dot.off{background:var(--tt)}
+@keyframes bk{0%,100%{opacity:1}50%{opacity:.3}}
+.is{display:flex;gap:10px;margin-top:16px}
+.ic{flex:1;display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:var(--rs);font-size:12px;font-weight:500}
+.ic.ok{background:var(--ol);color:var(--ok)}
+.ic svg{width:16px;height:16px;flex-shrink:0}
+.pd{display:flex;align-items:center;padding:14px 0;border-bottom:1px solid var(--bl)}
+.pd:last-child{border-bottom:none}
+.pdn{width:70px;font-size:14px;font-weight:600}
+.pdn.td{color:var(--ac)}
+.pdb{flex:1;padding:10px 14px;border-radius:var(--rs);background:var(--al);border-left:3px solid var(--ac)}
+.pdc{font-size:13px;font-weight:500}
+.pdh{font-size:12px;color:var(--ts);margin-top:2px}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.si{padding:16px;border-radius:var(--rs);background:var(--bg);text-align:center}
+.sv{font-family:var(--fm);font-size:28px;font-weight:700;color:var(--ac)}
+.sl{font-size:12px;color:var(--ts);margin-top:4px;font-weight:500}
+.cgi{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--bl)}
+.cgi:last-child{border-bottom:none}
+.cgi-i h4{font-size:14px;font-weight:600}
+.cgi-i p{font-size:12px;color:var(--ts);margin-top:2px}
+.bg{padding:5px 12px;border-radius:var(--rf);font-size:11px;font-weight:600}
+.bg-w{background:var(--wl);color:var(--wa)}
+.bg-s{background:var(--ol);color:var(--ok)}
+.bg-d{background:var(--dl);color:var(--da)}
+.bg-i{background:var(--al);color:var(--ac)}
+.fg{margin-bottom:16px}
+.fl{display:block;font-size:13px;font-weight:500;color:var(--ts);margin-bottom:6px}
+.fi,.fs,.ft{width:100%;padding:12px 14px;border-radius:var(--rs);border:1.5px solid var(--bd);background:var(--bg);font-size:14px;font-family:var(--f);color:var(--tp);transition:border-color .2s;outline:none}
+.fi:focus,.fs:focus,.ft:focus{border-color:var(--ac);background:#fff}
+.ft{min-height:80px;resize:vertical}
+.bt{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;border-radius:var(--rs);border:none;cursor:pointer;font-family:var(--f);font-size:15px;font-weight:600;transition:all .2s;width:100%}
+.bt-p{background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.25)}
+.bt-p:hover{background:#1d4ed8}
+.bt-s{background:var(--ok);color:#fff}
+.sr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+.sb{padding:16px 12px;border-radius:var(--rs);text-align:center;background:var(--bgc);border:1px solid var(--bl)}
+.sbv{font-family:var(--fm);font-size:24px;font-weight:700}
+.sbl{font-size:11px;color:var(--ts);margin-top:4px;font-weight:500}
+.ai{display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:var(--rs);margin-bottom:8px}
+.ai.w{background:var(--wl)}.ai.e{background:var(--dl)}
+.aico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.aico.w{background:rgba(217,119,6,.15);color:var(--wa)}.aico.e{background:rgba(220,38,38,.15);color:var(--da)}
+.aico svg{width:16px;height:16px}
+.ait h4{font-size:13px;font-weight:600}.ait p{font-size:12px;color:var(--ts);margin-top:2px}
+.cc{padding:16px;border-radius:var(--rm);border:1px solid var(--bl);margin-bottom:10px;background:var(--bgc);cursor:pointer;transition:all .2s}
+.cc:hover{box-shadow:var(--smd);transform:translateY(-1px)}
+.cch{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.ccd{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.ccn{font-size:15px;font-weight:600}
+.cca{font-size:12px;color:var(--ts);display:flex;align-items:center;gap:4px;margin-bottom:10px;padding-left:24px}
+.cca svg{width:14px;height:14px}
+.ccf{display:flex;align-items:center;gap:14px;padding-left:24px}
+.er{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--bl)}
+.er:last-child{border-bottom:none}
+.ea{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.ei{flex:1}.en{font-size:14px;font-weight:600}.erl{font-size:12px;color:var(--ts)}
+.et{text-align:right}.etv{font-family:var(--fm);font-size:13px;font-weight:600}.etl{font-size:11px;color:var(--ts)}
+.tb{display:flex;gap:4px;padding:3px;background:var(--bg);border-radius:var(--rs);margin-bottom:16px}
+.ti{flex:1;padding:10px 8px;border-radius:8px;border:none;background:transparent;font-family:var(--f);font-size:13px;font-weight:500;color:var(--ts);cursor:pointer;transition:all .2s}
+.ti.a{background:var(--bgc);color:var(--tp);box-shadow:var(--ssm)}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:fi .2s ease}
+.ms{background:var(--bgc);border-radius:var(--rl) var(--rl) 0 0;padding:24px 20px 40px;width:100%;max-width:430px;max-height:85vh;overflow-y:auto;animation:su .3s cubic-bezier(.4,0,.2,1)}
+.mh{width:36px;height:4px;border-radius:2px;background:var(--bd);margin:0 auto 20px}
+.mt{font-size:20px;font-weight:700;margin-bottom:20px;letter-spacing:-.3px}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.pp{width:100%;aspect-ratio:4/3;border-radius:var(--rm);background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--tt);border:2px dashed var(--bd);cursor:pointer;transition:all .2s;margin-bottom:16px;overflow:hidden}
+.pp:hover{border-color:var(--ac);color:var(--ac)}
+.pp.tk{border:none;background:#1a1a1a}
+.pp p{font-size:13px;font-weight:500}
+.so{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,.95);z-index:300;animation:fi .3s ease}
+.sc{width:80px;height:80px;border-radius:50%;background:var(--ol);display:flex;align-items:center;justify-content:center;color:var(--ok);margin-bottom:20px;animation:si .4s cubic-bezier(.4,0,.2,1)}
+@keyframes si{from{transform:scale(0)}to{transform:scale(1)}}
+.stx{font-size:20px;font-weight:700;margin-bottom:6px}
+.ssx{font-size:14px;color:var(--ts)}
+.ca{display:flex;gap:8px}
+.cab{width:34px;height:34px;border-radius:8px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
+.cab.ap{background:var(--ol);color:var(--ok)}.cab.rj{background:var(--dl);color:var(--da)}
+.cab svg{width:16px;height:16px}
+.sct{font-size:13px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;margin-top:24px}
+.sct:first-child{margin-top:0}
+
+/* ═══ CALENDAR ═══ */
+.cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-hd h2{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.cal-nav{display:flex;align-items:center;gap:6px}
+.cal-nb{width:34px;height:34px;border-radius:10px;border:1px solid var(--bd);background:var(--bgc);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ts);transition:all .15s}
+.cal-nb:hover{background:var(--al);color:var(--ac);border-color:var(--ac)}
+.cal-ml{font-size:15px;font-weight:600;min-width:140px;text-align:center}
+.cal-lg{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:var(--bg);border-radius:var(--rs)}
+.cal-li{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:var(--ts)}
+.cal-ld{width:8px;height:8px;border-radius:50%}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:14px}
+.cal-dh{text-align:center;font-size:11px;font-weight:600;color:var(--tt);padding:6px 0;text-transform:uppercase;letter-spacing:.5px}
+.cal-d{aspect-ratio:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;position:relative;gap:2px;background:var(--bgc);border:1.5px solid transparent}
+.cal-d:hover{background:var(--al);border-color:var(--as)}
+.cal-d.om{color:var(--tt);opacity:.35;pointer-events:none}
+.cal-d.td{border:2px solid var(--ac);font-weight:700;color:var(--ac)}
+.cal-d.sel{background:var(--ac);color:#fff;border-color:var(--ac)}
+.cal-d.sel:hover{background:#1d4ed8}
+.cal-d.we{background:var(--bg)}
+.cal-dn{line-height:1}
+.cal-dots{display:flex;gap:2px;position:absolute;bottom:3px}
+.cal-dot{width:5px;height:5px;border-radius:50%}
+.cal-dot.cp{background:var(--or)}.cal-dot.ca{background:var(--ok)}.cal-dot.ch{background:var(--ac)}
+
+.dd-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.dd-t{font-size:16px;font-weight:700}
+.cal-ev{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rs);margin-bottom:6px}
+.cal-ev.cp{background:var(--orl);border-left:3px solid var(--or)}
+.cal-ev.ca{background:var(--ol);border-left:3px solid var(--ok)}
+.cal-ev.cx{background:var(--al);border-left:3px solid var(--ac)}
+.cal-en{font-size:13px;font-weight:600}
+.cal-es{font-size:11px;color:var(--ts);margin-top:1px}
+.cal-eb{padding:3px 8px;border-radius:var(--rf);font-size:10px;font-weight:600}
+.asgn-btn{display:flex;align-items:center;gap:6px;padding:10px 16px;border-radius:var(--rs);border:1.5px dashed var(--ac);background:var(--al);color:var(--ac);font-family:var(--f);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;width:100%;justify-content:center;margin-top:12px}
+.asgn-btn:hover{background:var(--ac);color:#fff;border-style:solid}
+.asgn-btn svg{width:16px;height:16px}
+.asgn-r{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--rs);cursor:pointer;transition:all .15s;border:1.5px solid var(--bl);margin-bottom:8px}
+.asgn-r:hover{border-color:var(--ac);background:var(--al)}
+.asgn-r.sel{border-color:var(--ac);background:var(--al)}
+.asgn-ck{width:22px;height:22px;border-radius:6px;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.asgn-r.sel .asgn-ck{background:var(--ac);border-color:var(--ac);color:#fff}
+.avail-section{margin-top:16px;padding:14px;background:var(--bgc);border:1px solid var(--bl);border-radius:var(--rm)}
+.avail-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.avail-title{font-size:13px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.8px;display:flex;align-items:center;gap:6px}
+.avail-count{font-family:var(--fm);font-size:13px;font-weight:700;color:var(--ok);background:var(--ol);padding:2px 8px;border-radius:var(--rf)}
+.avail-list{display:flex;flex-direction:column;gap:6px}
+.avail-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--rs);background:var(--bg);transition:all .15s;cursor:pointer}
+.avail-row:hover{background:var(--al)}
+.avail-row .ea{width:30px;height:30px;font-size:10px}
+.avail-name{font-size:13px;font-weight:600}
+.avail-meta{font-size:11px;color:var(--ts)}
+.avail-badge{margin-left:auto;padding:3px 8px;border-radius:var(--rf);font-size:10px;font-weight:600;background:var(--ol);color:var(--ok)}
+.unavail-section{margin-top:10px}
+.unavail-row{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:var(--rs);opacity:.45}
+.unavail-row .ea{width:30px;height:30px;font-size:10px}
+.unavail-reason{margin-left:auto;font-size:10px;font-weight:500;padding:3px 8px;border-radius:var(--rf)}
+.unavail-reason.cg{background:var(--orl);color:var(--or)}
+.unavail-reason.af{background:var(--al);color:var(--ac)}
+
+/* ═══ MAP ═══ */
+.map-section{margin-top:16px;border-radius:var(--rm);overflow:hidden;border:1px solid var(--bl);background:var(--bgc)}
+.map-search-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--bl);position:relative}
+.map-search-icon{color:var(--ts);flex-shrink:0;display:flex;align-items:center}
+.map-search-icon svg{width:18px;height:18px}
+.map-search-input{flex:1;border:none;outline:none;font-family:var(--f);font-size:13px;background:transparent;color:var(--tp)}
+.map-search-input::placeholder{color:var(--tt)}
+.map-search-clear{width:24px;height:24px;border-radius:6px;border:none;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ts);flex-shrink:0}
+.map-search-clear svg{width:14px;height:14px}
+.map-results{position:absolute;top:100%;left:0;right:0;background:var(--bgc);border:1px solid var(--bl);border-top:none;border-radius:0 0 var(--rs) var(--rs);z-index:10;max-height:200px;overflow-y:auto;box-shadow:var(--smd)}
+.map-result-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--bl)}
+.map-result-item:last-child{border-bottom:none}
+.map-result-item:hover{background:var(--al)}
+.map-result-icon{width:28px;height:28px;border-radius:8px;background:var(--dl);color:var(--da);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.map-result-icon svg{width:14px;height:14px}
+.map-result-name{font-size:13px;font-weight:500}
+.map-result-type{font-size:11px;color:var(--ts)}
+.map-container{position:relative;width:100%;height:240px;background:#e8eaed;overflow:hidden}
+.map-tile{width:100%;height:100%;position:relative}
+.map-pin{position:absolute;transform:translate(-50%,-100%);z-index:5;cursor:pointer;transition:transform .2s}
+.map-pin:hover{transform:translate(-50%,-100%) scale(1.15)}
+.map-pin-dot{width:14px;height:14px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.map-pin-label{position:absolute;top:18px;left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--bgc);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.12);pointer-events:none}
+.map-flag{position:absolute;transform:translate(-50%,-100%);z-index:8}
+.map-flag-pole{width:3px;height:28px;background:var(--da);margin:0 auto}
+.map-flag-banner{width:22px;height:16px;background:var(--da);border-radius:2px 4px 4px 2px;position:absolute;top:0;left:3px}
+.map-flag-label{position:absolute;top:30px;left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--da);color:#fff;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.map-dist-card{padding:10px 14px;border-top:1px solid var(--bl)}
+.map-dist-title{font-size:11px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.map-dist-title svg{width:14px;height:14px}
+.map-dist-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bl)}
+.map-dist-row:last-child{border-bottom:none}
+.map-dist-info{flex:1}
+.map-dist-ch{font-size:13px;font-weight:600}
+.map-dist-emps{font-size:11px;color:var(--ts);margin-top:1px}
+.map-dist-val{font-family:var(--fm);font-size:14px;font-weight:700;white-space:nowrap}
+.map-dist-val.near{color:var(--ok)}
+.map-dist-val.mid{color:var(--wa)}
+.map-dist-val.far{color:var(--ts)}
+.map-toggle{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--rs);border:1px solid var(--bl);background:var(--bgc);font-family:var(--f);font-size:12px;font-weight:500;color:var(--ts);cursor:pointer;transition:all .15s;margin-top:12px;width:100%;justify-content:center}
+.map-toggle:hover{background:var(--al);color:var(--ac);border-color:var(--ac)}
+.map-toggle svg{width:16px;height:16px}
+
+/* ═══ EMPLOYEE ACTION CHIP ═══ */
+.emp-chip{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:1.5px solid transparent;position:relative}
+.emp-chip:hover{border-color:var(--ac);box-shadow:var(--ssm)}
+.emp-chip-actions{position:absolute;top:calc(100% + 6px);left:0;background:var(--bgc);border:1px solid var(--bl);border-radius:var(--rs);box-shadow:var(--smd);z-index:20;min-width:200px;overflow:hidden;animation:fi .15s ease}
+.emp-chip-action{display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:13px;font-weight:500;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--bl);color:var(--tp)}
+.emp-chip-action:last-child{border-bottom:none}
+.emp-chip-action:hover{background:var(--al)}
+.emp-chip-action.danger{color:var(--da)}
+.emp-chip-action.danger:hover{background:var(--dl)}
+.emp-chip-action.warning{color:var(--wa)}
+.emp-chip-action.warning:hover{background:var(--wl)}
+.emp-chip-action-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.emp-chip-action-icon.blue{background:var(--al);color:var(--ac)}
+.emp-chip-action-icon.orange{background:var(--orl);color:var(--or)}
+.emp-chip-action-icon.red{background:var(--dl);color:var(--da)}
+.emp-chip-edit{position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;pointer-events:none}
+.emp-chip-edit svg{width:10px;height:10px}
+.emp-chip:hover .emp-chip-edit{opacity:1}
+
+/* ═══ TASKS ═══ */
+.task-card{background:var(--bgc);border:1px solid var(--bl);border-radius:var(--rm);padding:14px;margin-bottom:10px;transition:all .15s}
+.task-card.new{border-left:3px solid var(--ac);animation:taskPulse 2s ease}
+@keyframes taskPulse{0%{background:#eff6ff}100%{background:var(--bgc)}}
+.task-card.done{opacity:.6}
+.task-hd{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.task-priority{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.task-priority.high{background:var(--da)}
+.task-priority.medium{background:var(--wa)}
+.task-priority.low{background:var(--ok)}
+.task-title{font-size:14px;font-weight:600;flex:1}
+.task-title.done{text-decoration:line-through;color:var(--ts)}
+.task-meta{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--ts);margin-bottom:10px}
+.task-meta-item{display:flex;align-items:center;gap:4px}
+.task-meta-item svg{width:12px;height:12px}
+.task-desc{font-size:13px;color:var(--ts);line-height:1.4;margin-bottom:10px;padding:8px 10px;background:var(--bg);border-radius:8px}
+.task-from{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ts);padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:10px}
+.task-from .ea{width:24px;height:24px;font-size:9px}
+.task-actions{display:flex;gap:8px}
+.task-action-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:8px;border:none;font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.task-action-btn.accept{background:var(--al);color:var(--ac)}
+.task-action-btn.accept:hover{background:var(--ac);color:#fff}
+.task-action-btn.complete{background:var(--ol);color:var(--ok)}
+.task-action-btn.complete:hover{background:var(--ok);color:#fff}
+.task-action-btn.done-btn{background:var(--bg);color:var(--ts);pointer-events:none}
+.task-status-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--rf);font-size:10px;font-weight:600}
+.task-status-pill.new{background:var(--al);color:var(--ac)}
+.task-status-pill.accepted{background:var(--wl);color:var(--wa)}
+.task-status-pill.completed{background:var(--ol);color:var(--ok)}
+.task-empty{text-align:center;padding:40px 16px}
+.task-empty-icon{width:56px;height:56px;border-radius:16px;background:var(--bg);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:var(--tt)}
+.task-empty p{font-size:14px;color:var(--tt)}
+.task-badge-count{background:var(--da);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:var(--rf);position:absolute;top:0;right:calc(50% - 20px)}
+
+/* Task enrichments */
+.task-deadline{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--rf)}
+.task-deadline.urgent{background:var(--dl);color:var(--da)}
+.task-deadline.soon{background:var(--wl);color:var(--wa)}
+.task-deadline.ok{background:var(--bg);color:var(--ts)}
+.task-deadline svg{width:12px;height:12px}
+.task-resp-type{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:var(--ts);padding:4px 10px;border-radius:var(--rf);background:var(--bg)}
+.task-resp-type svg{width:12px;height:12px}
+.task-response-area{margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--rs);border:1.5px solid var(--bl)}
+.task-response-label{font-size:11px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.task-yesno{display:flex;gap:8px}
+.task-yn-btn{flex:1;padding:12px;border-radius:var(--rs);border:1.5px solid var(--bl);background:var(--bgc);font-family:var(--f);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.task-yn-btn:hover{border-color:var(--ac)}
+.task-yn-btn.yes:hover,.task-yn-btn.yes.sel{background:var(--ol);border-color:var(--ok);color:var(--ok)}
+.task-yn-btn.no:hover,.task-yn-btn.no.sel{background:var(--dl);border-color:var(--da);color:var(--da)}
+.task-yn-btn.done-sel:hover,.task-yn-btn.done-sel.sel{background:var(--ol);border-color:var(--ok);color:var(--ok)}
+.task-yn-btn.notdone-sel:hover,.task-yn-btn.notdone-sel.sel{background:var(--wl);border-color:var(--wa);color:var(--wa)}
+.task-photo-area{display:flex;flex-direction:column;align-items:center;gap:8px}
+.task-photo-btn{width:100%;padding:20px;border-radius:var(--rs);border:2px dashed var(--bl);background:var(--bgc);display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all .15s;color:var(--ts);font-family:var(--f);font-size:13px;font-weight:500}
+.task-photo-btn:hover{border-color:var(--ac);color:var(--ac)}
+.task-photo-btn.taken{border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:14px}
+.task-photo-btn svg{width:28px;height:28px}
+.task-msg-area{display:flex;gap:8px}
+.task-msg-input{flex:1;padding:10px 12px;border-radius:var(--rs);border:1.5px solid var(--bl);background:var(--bgc);font-family:var(--f);font-size:13px;outline:none;resize:none;min-height:44px}
+.task-msg-input:focus{border-color:var(--ac)}
+.task-msg-send{width:44px;height:44px;border-radius:var(--rs);border:none;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
+.task-msg-send:hover{background:#1d4ed8}
+.task-msg-send:disabled{opacity:.4;cursor:default}
+.task-response-done{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:var(--rs);font-size:13px;font-weight:500}
+.task-response-done.yes{background:var(--ol);color:var(--ok)}
+.task-response-done.no{background:var(--dl);color:var(--da)}
+.task-response-done.msg{background:var(--al);color:var(--ac)}
+.task-response-done.photo{background:#ede9fe;color:#7c3aed}
+.task-filter-bar{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
+.task-filter{padding:7px 14px;border-radius:var(--rf);border:1.5px solid var(--bl);background:var(--bgc);font-family:var(--f);font-size:12px;font-weight:500;color:var(--ts);cursor:pointer;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.task-filter.active{background:var(--ac);color:#fff;border-color:var(--ac)}
+.task-filter .tf-count{font-family:var(--fm);font-size:11px;font-weight:700;opacity:.7}
+.task-overdue-banner{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--dl);border-radius:var(--rs);margin-bottom:12px;font-size:13px;font-weight:500;color:var(--da)}
+.task-overdue-banner svg{width:16px;height:16px;flex-shrink:0}
+
+/* ═══ MANAGER TASK TRACKER ═══ */
+.mtt-stats{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.mtt-stat{padding:12px 8px;border-radius:var(--rs);text-align:center;background:var(--bgc);border:1px solid var(--bl);cursor:pointer;transition:all .15s}
+.mtt-stat:hover{border-color:var(--ac)}
+.mtt-stat.active{border-color:var(--ac);background:var(--al)}
+.mtt-sv{font-family:var(--fm);font-size:20px;font-weight:700}
+.mtt-sl{font-size:10px;color:var(--ts);margin-top:2px;font-weight:500}
+.mtt-sort-bar{display:flex;gap:4px;padding:3px;background:var(--bg);border-radius:var(--rs);margin-bottom:14px}
+.mtt-sort-btn{flex:1;padding:8px 6px;border-radius:8px;border:none;background:transparent;font-family:var(--f);font-size:12px;font-weight:500;color:var(--ts);cursor:pointer;transition:all .15s;text-align:center}
+.mtt-sort-btn.active{background:var(--bgc);color:var(--tp);box-shadow:var(--ssm)}
+.mtt-group-hd{display:flex;align-items:center;gap:8px;padding:10px 0 6px;font-size:13px;font-weight:600;color:var(--ts)}
+.mtt-group-hd .ccd{width:10px;height:10px}
+.mtt-task-row{display:flex;align-items:center;gap:10px;padding:12px;border-radius:var(--rs);background:var(--bgc);border:1px solid var(--bl);margin-bottom:6px;transition:all .15s;cursor:pointer}
+.mtt-task-row:hover{box-shadow:var(--smd);border-color:var(--as)}
+.mtt-task-row.overdue{border-left:3px solid var(--da)}
+.mtt-task-pri{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mtt-task-pri.high{background:var(--da)}.mtt-task-pri.medium{background:var(--wa)}.mtt-task-pri.low{background:var(--ok)}
+.mtt-task-info{flex:1;min-width:0}
+.mtt-task-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mtt-task-sub{font-size:11px;color:var(--ts);margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mtt-task-sub svg{width:11px;height:11px}
+.mtt-task-status{flex-shrink:0}
+.mtt-resp-preview{margin-top:2px;font-size:11px;font-weight:500;display:flex;align-items:center;gap:4px}
+.mtt-resp-preview.oui{color:var(--ok)}.mtt-resp-preview.non{color:var(--da)}.mtt-resp-preview.msg{color:var(--ac)}.mtt-resp-preview.photo{color:#7c3aed}
+.mtt-detail{margin-top:8px;padding:12px;background:var(--bg);border-radius:var(--rs);animation:fi .15s ease}
+.mtt-detail-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bl);font-size:12px}
+.mtt-detail-row:last-child{border-bottom:none}
+.mtt-detail-label{color:var(--ts);font-weight:500}
+.mtt-detail-val{font-weight:600}
+.mtt-empty{text-align:center;padding:40px 16px;color:var(--tt)}
+.mtt-empty svg{width:40px;height:40px;margin-bottom:8px;opacity:.4}
+
+/* ═══ CHANTIER DETAIL ═══ */
+.chd-back{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--ac);cursor:pointer;margin-bottom:14px;padding:6px 0;border:none;background:none;font-family:var(--f)}
+.chd-back:hover{text-decoration:underline}
+.chd-hero{padding:20px;border-radius:var(--rm);margin-bottom:16px;color:#fff;position:relative;overflow:hidden}
+.chd-hero::after{content:'';position:absolute;top:-30%;right:-10%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08)}
+.chd-hero-name{font-size:20px;font-weight:700;margin-bottom:4px;position:relative}
+.chd-hero-addr{font-size:13px;opacity:.75;display:flex;align-items:center;gap:4px;position:relative}
+.chd-hero-addr svg{width:14px;height:14px}
+.chd-kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.chd-kpi{padding:14px 10px;border-radius:var(--rs);text-align:center;background:var(--bgc);border:1px solid var(--bl)}
+.chd-kpi-val{font-family:var(--fm);font-size:22px;font-weight:700}
+.chd-kpi-unit{font-size:11px;font-weight:400;opacity:.6}
+.chd-kpi-label{font-size:10px;color:var(--ts);margin-top:2px;font-weight:500}
+.chd-chart{background:var(--bgc);border:1px solid var(--bl);border-radius:var(--rm);padding:16px;margin-bottom:12px}
+.chd-chart-title{font-size:13px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.chd-bars{display:flex;align-items:flex-end;gap:6px;height:120px;padding-top:8px}
+.chd-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%}
+.chd-bar-wrap{flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.chd-bar{width:100%;border-radius:6px 6px 0 0;min-height:4px;transition:height .4s cubic-bezier(.4,0,.2,1)}
+.chd-bar-val{font-family:var(--fm);font-size:10px;font-weight:600;color:var(--ts)}
+.chd-bar-label{font-size:10px;font-weight:500;color:var(--tt)}
+.chd-emp-detail{background:var(--bgc);border:1px solid var(--bl);border-radius:var(--rm);padding:16px;margin-bottom:12px}
+.chd-emp-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.chd-emp-bars{display:flex;flex-direction:column;gap:6px}
+.chd-emp-bar-row{display:flex;align-items:center;gap:10px}
+.chd-emp-bar-label{width:60px;font-size:11px;color:var(--ts);text-align:right;font-weight:500}
+.chd-emp-bar-track{flex:1;height:20px;background:var(--bg);border-radius:4px;overflow:hidden;position:relative}
+.chd-emp-bar-fill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:9px;font-weight:700;color:#fff;min-width:24px}
+.chd-timeline{background:var(--bgc);border:1px solid var(--bl);border-radius:var(--rm);padding:16px;margin-bottom:12px}
+.chd-tl-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bl)}
+.chd-tl-row:last-child{border-bottom:none}
+.chd-tl-date{width:70px;font-size:12px;font-weight:600;color:var(--ts)}
+.chd-tl-avatars{display:flex;gap:-4px}
+.chd-tl-avatar{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;border:2px solid var(--bgc);margin-left:-6px}
+.chd-tl-avatar:first-child{margin-left:0}
+.chd-tl-hours{margin-left:auto;font-family:var(--fm);font-size:13px;font-weight:600}
+
+/* ═══ MEETING ASSISTANT ═══ */
+.meet-hero{text-align:center;padding:24px 16px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:var(--rm);margin-bottom:16px;color:#fff;position:relative;overflow:hidden}
+.meet-hero::after{content:'';position:absolute;top:-40%;right:-15%;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
+.meet-hero h2{font-size:20px;font-weight:700;position:relative;margin-bottom:4px}
+.meet-hero p{font-size:13px;opacity:.7;position:relative}
+.meet-config{background:var(--bgc);border:1px solid var(--bl);border-radius:var(--rm);padding:16px;margin-bottom:12px}
+.meet-rec-area{text-align:center;padding:20px 0}
+.meet-rec-btn{width:80px;height:80px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative}
+.meet-rec-btn.idle{background:linear-gradient(145deg,#7c3aed,#a78bfa);box-shadow:0 8px 25px rgba(124,58,237,.3);color:#fff}
+.meet-rec-btn.idle:hover{transform:scale(1.06)}
+.meet-rec-btn.recording{background:var(--da);box-shadow:0 8px 25px rgba(220,38,38,.35);color:#fff;animation:recPulse 1.5s ease infinite}
+@keyframes recPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)}50%{box-shadow:0 0 0 16px rgba(220,38,38,0)}}
+.meet-rec-btn svg{width:32px;height:32px}
+.meet-rec-label{margin-top:12px;font-size:14px;font-weight:600}
+.meet-rec-timer{font-family:var(--fm);font-size:13px;color:var(--da);margin-top:4px}
+.meet-wave{display:flex;align-items:center;justify-content:center;gap:3px;height:24px;margin-top:8px}
+.meet-wave-bar{width:3px;border-radius:2px;background:var(--da);animation:wave 1s ease-in-out infinite}
+.meet-wave-bar:nth-child(1){animation-delay:0s;height:8px}
+.meet-wave-bar:nth-child(2){animation-delay:.15s;height:16px}
+.meet-wave-bar:nth-child(3){animation-delay:.3s;height:12px}
+.meet-wave-bar:nth-child(4){animation-delay:.45s;height:20px}
+.meet-wave-bar:nth-child(5){animation-delay:.6s;height:10px}
+.meet-wave-bar:nth-child(6){animation-delay:.75s;height:14px}
+.meet-wave-bar:nth-child(7){animation-delay:.9s;height:8px}
+@keyframes wave{0%,100%{height:4px;opacity:.4}50%{height:20px;opacity:1}}
+.meet-transcript{background:var(--bgc);border:1px solid var(--bl);border-radius:var(--rm);margin-bottom:12px;overflow:hidden}
+.meet-transcript-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--bl)}
+.meet-transcript-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.meet-transcript-title svg{width:16px;height:16px}
+.meet-transcript-body{padding:14px 16px;max-height:300px;overflow-y:auto;font-size:13px;line-height:1.6;color:var(--ts)}
+.meet-transcript-line{padding:6px 0;border-bottom:1px solid var(--bl)}
+.meet-transcript-line:last-child{border-bottom:none}
+.meet-transcript-live{color:var(--tp);font-weight:500;background:var(--al);padding:6px 10px;border-radius:6px;margin-top:8px;animation:fi .3s ease}
+.meet-synth{background:var(--bgc);border:1px solid var(--bl);border-radius:var(--rm);margin-bottom:12px;overflow:hidden}
+.meet-synth-hd{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--bl);font-size:14px;font-weight:600}
+.meet-synth-hd svg{width:18px;height:18px;color:#7c3aed}
+.meet-synth-body{padding:16px;font-size:13px;line-height:1.7;color:var(--tp)}
+.meet-synth-body h4{font-size:14px;font-weight:700;margin:12px 0 6px;color:var(--tp)}
+.meet-synth-body h4:first-child{margin-top:0}
+.meet-synth-body p{margin-bottom:8px}
+.meet-synth-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:24px;color:#7c3aed;font-size:14px;font-weight:500}
+.meet-synth-loading .dot{width:8px;height:8px;border-radius:50%;background:#7c3aed;animation:dotPulse 1.2s ease infinite}
+.meet-synth-loading .dot:nth-child(2){animation-delay:.2s}
+.meet-synth-loading .dot:nth-child(3){animation-delay:.4s}
+@keyframes dotPulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+.meet-actions{display:flex;gap:8px;margin-bottom:12px}
+.meet-action-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:var(--rs);border:1.5px solid var(--bl);background:var(--bgc);font-family:var(--f);font-size:13px;font-weight:600;color:var(--ts);cursor:pointer;transition:all .15s}
+.meet-action-btn:hover{border-color:var(--ac);color:var(--ac);background:var(--al)}
+.meet-action-btn.primary{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.meet-action-btn.primary:hover{background:#6d28d9}
+.meet-action-btn svg{width:16px;height:16px}
+.meet-past{margin-top:16px}
+.meet-past-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--rs);background:var(--bgc);border:1px solid var(--bl);margin-bottom:8px;cursor:pointer;transition:all .15s}
+.meet-past-item:hover{box-shadow:var(--smd)}
+.meet-past-icon{width:40px;height:40px;border-radius:12px;background:#ede9fe;color:#7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.meet-past-icon svg{width:20px;height:20px}
+.meet-past-info{flex:1}
+.meet-past-title{font-size:14px;font-weight:600}
+.meet-past-meta{font-size:11px;color:var(--ts);margin-top:2px}
+
+/* ═══ TIMESHEET ═══ */
+.ts-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.ts-nav-btns{display:flex;align-items:center;gap:6px}
+.ts-nav-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--bl);background:var(--bgc);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ts);transition:all .15s}
+.ts-nav-btn:hover{background:var(--al);color:var(--ac);border-color:var(--ac)}
+.ts-nav-label{font-size:14px;font-weight:600;min-width:160px;text-align:center}
+.ts-mode{display:flex;gap:4px;padding:3px;background:var(--bg);border-radius:var(--rs);margin-bottom:14px}
+.ts-mode-btn{flex:1;padding:8px;border-radius:8px;border:none;background:transparent;font-family:var(--f);font-size:13px;font-weight:500;color:var(--ts);cursor:pointer;transition:all .15s;text-align:center}
+.ts-mode-btn.active{background:var(--bgc);color:var(--tp);box-shadow:var(--ssm)}
+.ts-table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--bl);border-radius:var(--rm);overflow:hidden;background:var(--bgc);margin-bottom:12px;font-size:12px}
+.ts-table th{padding:8px 4px;font-size:10px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.3px;background:var(--bg);border-bottom:1px solid var(--bl);text-align:center;position:sticky;top:0;z-index:2}
+.ts-table th:first-child{text-align:left;padding-left:10px;min-width:100px}
+.ts-table td{padding:6px 4px;text-align:center;border-bottom:1px solid var(--bl);font-family:var(--fm);font-size:11px;font-weight:500;vertical-align:middle}
+.ts-table tr:last-child td{border-bottom:none}
+.ts-table td:first-child{text-align:left;padding-left:6px;font-family:var(--f)}
+.ts-emp-cell{display:flex;align-items:center;gap:6px}
+.ts-emp-cell .ea{width:26px;height:26px;font-size:9px;border-radius:7px}
+.ts-emp-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px}
+.ts-cell{min-width:36px}
+.ts-cell.today{background:var(--al)}
+.ts-cell.weekend{background:var(--bg);color:var(--tt)}
+.ts-hours{font-weight:600;color:var(--tp)}
+.ts-absent{background:#FEF2F2;color:var(--da);font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:.3px}
+.ts-conge{background:var(--orl);color:var(--or);font-family:var(--f);font-size:9px;font-weight:600;letter-spacing:.3px}
+.ts-empty{color:var(--tt);font-size:10px}
+.ts-total{font-weight:700;color:var(--ac);font-size:12px}
+.ts-total-row td{background:var(--al);font-weight:700;border-top:2px solid var(--ac)}
+.ts-total-row td:first-child{font-family:var(--f);font-size:11px;color:var(--ac)}
+.ts-scroll{overflow-x:auto;margin-bottom:12px;border-radius:var(--rm);-webkit-overflow-scrolling:touch}
+.ts-legend{display:flex;gap:12px;flex-wrap:wrap;padding:10px 14px;background:var(--bg);border-radius:var(--rs);margin-bottom:12px;font-size:11px;color:var(--ts)}
+.ts-legend-item{display:flex;align-items:center;gap:5px}
+.ts-legend-dot{width:12px;height:12px;border-radius:3px}
+.ts-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.ts-summary-card{padding:14px 12px;border-radius:var(--rs);background:var(--bgc);border:1px solid var(--bl);text-align:center}
+.ts-summary-val{font-family:var(--fm);font-size:22px;font-weight:700}
+.ts-summary-label{font-size:10px;color:var(--ts);margin-top:2px;font-weight:500}
+.ts-th-today{color:var(--ac);font-weight:700}
+.ts-th-we{color:var(--tt);opacity:.6}
+`;
+
+function useTime() {
+  const [t, setT] = useState(new Date());
+  useEffect(() => { const i = setInterval(() => setT(new Date()), 1000); return () => clearInterval(i); }, []);
+  return t;
+}
+
+function Hd({ user, role, onLogout }) {
+  return (
+    <div className="hd">
+      <div className="hd-l">
+        <div className="hd-av" style={{ background: role==="manager"?"linear-gradient(135deg,#2563eb,#60a5fa)":"linear-gradient(135deg,#059669,#34d399)" }}>{user.avatar}</div>
+        <div className="hd-i"><h2>{user.name}</h2><span>{role==="manager"?"Manager":user.role}</span></div>
+      </div>
+      <button className="hd-a" onClick={onLogout}>{I.logOut}</button>
+    </div>
+  );
+}
+
+function BN({ tabs, active, onNav }) {
+  return (
+    <div className="bn">
+      {tabs.map(t => (
+        <button key={t.id} className={`ni ${active===t.id?"a":""}`} onClick={() => onNav(t.id)}>
+          {t.icon}<span className="nl">{t.label}</span>
+          {t.badge && <span className="nb" />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Mod({ children, onClose }) {
+  return (<div className="mo" onClick={onClose}><div className="ms" onClick={e => e.stopPropagation()}><div className="mh" />{children}</div></div>);
+}
+
+function Succ({ text, sub, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 2000); return () => clearTimeout(t); }, [onDone]);
+  return (<div className="so" onClick={onDone}><div className="sc"><svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div className="stx">{text}</div><div className="ssx">{sub}</div></div>);
+}
+
+// ═══ TASK TAB (Employee) ═══
+function TaskTab({ myTasks, activeTasks, completedTasks, newTaskCount, onUpdateTask, setSucc }) {
+  const [filter, setFilter] = useState("todo");
+  const [msgInputs, setMsgInputs] = useState({});
+  const [photoTaken, setPhotoTaken] = useState({});
+
+  const today = "2026-03-26";
+  const overdueTasks = activeTasks.filter(t => t.deadline && t.deadline < today);
+  const urgentTasks = activeTasks.filter(t => t.deadline === today);
+  const todoTasks = activeTasks.filter(t => !t.response);
+  const respondedTasks = activeTasks.filter(t => t.response);
+
+  const getDeadlineInfo = (d) => {
+    if (!d) return { cls: "ok", label: "Sans échéance" };
+    if (d < today) return { cls: "urgent", label: "En retard !" };
+    if (d === today) return { cls: "urgent", label: "Aujourd'hui" };
+    const dt = new Date(d);
+    const diff = Math.ceil((dt - new Date(today)) / 86400000);
+    if (diff <= 2) return { cls: "soon", label: `J-${diff}` };
+    return { cls: "ok", label: dt.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) };
+  };
+
+  const respTypeLabel = (rt) => {
+    if (rt === "yesno") return { icon: I.check, label: "Oui / Non" };
+    if (rt === "done") return { icon: I.checkCircle, label: "Fait / Pas fait" };
+    if (rt === "photo") return { icon: I.camera, label: "Photo requise" };
+    if (rt === "message") return { icon: I.send, label: "Réponse écrite" };
+    return { icon: I.check, label: "À traiter" };
+  };
+
+  const filtered = filter === "todo" ? todoTasks
+    : filter === "urgent" ? [...overdueTasks, ...urgentTasks]
+    : filter === "responded" ? respondedTasks
+    : filter === "done" ? completedTasks
+    : activeTasks;
+
+  const handleResponse = (taskId, response) => {
+    onUpdateTask(taskId, { response, status: "completed" });
+    setSucc({ text: "Réponse envoyée", sub: "Le manager sera notifié" });
+  };
+
+  return (
+    <>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:4}}>Mes tâches</h2>
+      <p style={{fontSize:13,color:"var(--ts)",marginBottom:12}}>{activeTasks.length} en cours · {completedTasks.length} terminée(s)</p>
+
+      {overdueTasks.length > 0 && (
+        <div className="task-overdue-banner">{I.alert} {overdueTasks.length} tâche(s) en retard</div>
+      )}
+
+      {/* Filter bar */}
+      <div className="task-filter-bar">
+        {[
+          { id: "todo", label: "À traiter", count: todoTasks.length },
+          { id: "urgent", label: "Urgent", count: overdueTasks.length + urgentTasks.length },
+          { id: "responded", label: "Répondu", count: respondedTasks.length },
+          { id: "done", label: "Terminées", count: completedTasks.length },
+        ].map(f => (
+          <button key={f.id} className={`task-filter ${filter === f.id ? "active" : ""}`} onClick={() => setFilter(f.id)}>
+            {f.label}
+            {f.count > 0 && <span className="tf-count">{f.count}</span>}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="task-empty">
+          <div className="task-empty-icon">{I.task}</div>
+          <p>{filter === "todo" ? "Tout est traité" : filter === "urgent" ? "Rien d'urgent" : filter === "done" ? "Aucune tâche terminée" : "Aucune réponse"}</p>
+        </div>
+      )}
+
+      {filtered.map(t => {
+        const ch = MOCK_DATA.chantiers.find(c => c.id === t.chantierId);
+        const dl = getDeadlineInfo(t.deadline);
+        const rt = respTypeLabel(t.responseType);
+        const isDone = t.status === "completed";
+
+        return (
+          <div key={t.id} className={`task-card ${t.status === "new" ? "new" : ""} ${isDone ? "done" : ""}`}>
+            {/* Header */}
+            <div className="task-hd">
+              <div className={`task-priority ${t.priority}`} />
+              <div className={`task-title ${isDone ? "done" : ""}`}>{t.title}</div>
+              {isDone ? (
+                <div className="task-status-pill completed">{I.checkCircle} Fait</div>
+              ) : (
+                <div className={`task-status-pill ${t.status}`}>{t.status === "new" ? "Nouveau" : "Accepté"}</div>
+              )}
+            </div>
+
+            {/* Meta row with deadline + response type */}
+            <div className="task-meta" style={{marginBottom:6}}>
+              <div className="task-meta-item">{I.taskSm} {ch?.name || "Chantier"}</div>
+              <div className={`task-deadline ${dl.cls}`}>
+                {I.clock} {dl.label}
+              </div>
+            </div>
+            <div className="task-meta" style={{marginBottom:8}}>
+              <div className="task-resp-type">{rt.icon} {rt.label}</div>
+            </div>
+
+            {t.description && <div className="task-desc">{t.description}</div>}
+
+            <div className="task-from">
+              <div className="ea" style={{background:"linear-gradient(135deg,#2563eb,#60a5fa)"}}>{t.createdBy.split(" ").map(w=>w[0]).join("")}</div>
+              <span>Assignée par <strong>{t.createdBy}</strong></span>
+            </div>
+
+            {/* Response area */}
+            {!isDone && !t.response && (
+              <div className="task-response-area">
+                <div className="task-response-label">
+                  {t.responseType === "yesno" ? "Votre réponse" : t.responseType === "done" ? "Avancement" : t.responseType === "photo" ? "Justificatif photo" : "Votre message"}
+                </div>
+
+                {/* Yes/No */}
+                {t.responseType === "yesno" && (
+                  <div className="task-yesno">
+                    <button className="task-yn-btn yes" onClick={() => handleResponse(t.id, "oui")}>
+                      {I.check} Oui
+                    </button>
+                    <button className="task-yn-btn no" onClick={() => handleResponse(t.id, "non")}>
+                      {I.x} Non
+                    </button>
+                  </div>
+                )}
+
+                {/* Done/Not done */}
+                {t.responseType === "done" && (
+                  <div className="task-yesno">
+                    <button className="task-yn-btn done-sel" onClick={() => handleResponse(t.id, "done")}>
+                      {I.checkCircle} C'est fait
+                    </button>
+                    <button className="task-yn-btn notdone-sel" onClick={() => handleResponse(t.id, "notdone")}>
+                      {I.clock} Pas encore
+                    </button>
+                  </div>
+                )}
+
+                {/* Photo */}
+                {t.responseType === "photo" && (
+                  <div className="task-photo-area">
+                    {photoTaken[t.id] ? (
+                      <>
+                        <div className="task-photo-btn taken" onClick={() => handleResponse(t.id, "photo_sent")}>
+                          {I.checkCircle} Photo prise — Envoyer
+                        </div>
+                      </>
+                    ) : (
+                      <div className="task-photo-btn" onClick={() => setPhotoTaken(p => ({...p, [t.id]: true}))}>
+                        {I.camera}
+                        Prendre une photo
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Message */}
+                {t.responseType === "message" && (
+                  <div className="task-msg-area">
+                    <textarea className="task-msg-input" placeholder="Votre réponse..." value={msgInputs[t.id] || ""} onChange={e => setMsgInputs(p => ({...p, [t.id]: e.target.value}))} />
+                    <button className="task-msg-send" disabled={!msgInputs[t.id]?.trim()} onClick={() => { handleResponse(t.id, msgInputs[t.id]); setMsgInputs(p => ({...p, [t.id]: ""})); }}>
+                      {I.send}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Response already given */}
+            {t.response && (
+              <div className={`task-response-done ${t.response === "oui" || t.response === "done" ? "yes" : t.response === "non" || t.response === "notdone" ? "no" : t.response === "photo_sent" ? "photo" : "msg"}`}>
+                {t.response === "oui" && <>{I.check} Répondu : Oui</>}
+                {t.response === "non" && <>{I.x} Répondu : Non</>}
+                {t.response === "done" && <>{I.checkCircle} Marqué : C'est fait</>}
+                {t.response === "notdone" && <>{I.clock} Marqué : Pas encore</>}
+                {t.response === "photo_sent" && <>{I.camera} Photo envoyée</>}
+                {!["oui","non","done","notdone","photo_sent"].includes(t.response) && <>{I.send} « {t.response.length > 40 ? t.response.slice(0,40)+"…" : t.response} »</>}
+              </div>
+            )}
+
+            {/* Accept button for new tasks without response yet */}
+            {t.status === "new" && !t.response && (
+              <div style={{marginTop:8}}>
+                <button className="task-action-btn accept" style={{width:"100%"}} onClick={() => { onUpdateTask(t.id, {status:"accepted"}); setSucc({text:"Tâche acceptée",sub:t.title}); }}>
+                  {I.check} Prendre en charge
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// ═══ EMPLOYEE APP ═══
+function EmpApp({ user, onLogout, tasks, onUpdateTask }) {
+  const [tab, setTab] = useState("pointage");
+  const [on, setOn] = useState(false);
+  const [t0, setT0] = useState(null);
+  const [showPhoto, setShowPhoto] = useState(false);
+  const [photo, setPhoto] = useState(false);
+  const [showCF, setShowCF] = useState(false);
+  const [succ, setSucc] = useState(null);
+  const [cgs, setCgs] = useState(MOCK_DATA.conges.filter(c => c.employeeId===user.id));
+  const [showTaskDetail, setShowTaskDetail] = useState(null);
+  const now = useTime();
+
+  const myTasks = tasks.filter(t => t.assigneeId === user.id);
+  const newTaskCount = myTasks.filter(t => t.status === "new").length;
+  const activeTasks = myTasks.filter(t => t.status !== "completed");
+  const completedTasks = myTasks.filter(t => t.status === "completed");
+
+  const doClick = () => { if (!on) setShowPhoto(true); else { setOn(false); setT0(null); setPhoto(false); setSucc({ text:"Départ enregistré", sub:`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")} — Bonne journée !` }); } };
+  const confirm = () => { setShowPhoto(false); setOn(true); setT0(new Date()); setSucc({ text:"Pointage confirmé", sub:`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")} — Résidence Les Oliviers` }); };
+  const submitC = (e) => { e.preventDefault(); const fd=new FormData(e.target); setCgs(p => [...p, { id:Date.now(), employeeId:user.id, type:fd.get("type"), dateStart:fd.get("start"), dateEnd:fd.get("end"), status:"En attente", reason:fd.get("reason") }]); setShowCF(false); setSucc({ text:"Demande envoyée", sub:"Votre manager sera notifié" }); };
+  const elapsed = on && t0 ? (()=>{ const d=Math.floor((now-t0)/1000); return `${Math.floor(d/3600)}h ${String(Math.floor((d%3600)/60)).padStart(2,"0")}min`; })() : null;
+  const tabs = [
+    { id:"pointage", label:"Pointer", icon:I.clock },
+    { id:"taches", label:"Tâches", icon:I.task, badge: newTaskCount > 0 },
+    { id:"planning", label:"Planning", icon:I.calendar },
+    { id:"conges", label:"Congés", icon:I.sun },
+  ];
+
+  return (
+    <div className="app">
+      <Hd user={user} role="employee" onLogout={onLogout} />
+      <div className="pg">
+        {tab==="pointage" && <>
+          <div className="ci-hero">
+            <div className="ci-time">{String(now.getHours()).padStart(2,"0")}:{String(now.getMinutes()).padStart(2,"0")}</div>
+            <div className="ci-date">{now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div>
+            <div className="ci-wrap">
+              <div className={`ci-ring ${on?"end":"go"}`} />
+              <button className={`ci-btn ${on?"end":"go"}`} onClick={doClick}>{on?I.stop:I.play}{on?"Fin de journée":"Commencer"}</button>
+            </div>
+            <div className={`ci-st ${on?"on":"off"}`}><span className={`ci-dot ${on?"on":"off"}`} />{on?`En poste depuis ${elapsed}`:"Non pointé"}</div>
+          </div>
+          {on && <div className="is"><div className="ic ok">{I.mapPin}<span>Position vérifiée</span></div><div className="ic ok">{I.camera}<span>Photo validée</span></div></div>}
+          <div className="cd" style={{marginTop:20}}>
+            <div className="ch"><span className="ct">Chantier du jour</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:10,height:10,borderRadius:"50%",background:"#2563eb"}} /><div><div style={{fontWeight:600,fontSize:14}}>Résidence Les Oliviers</div><div style={{fontSize:12,color:"var(--ts)",marginTop:2}}>12 Rue des Lilas, Lyon</div></div></div>
+          </div>
+          <div className="cd">
+            <div className="ch"><span className="ct">Historique récent</span></div>
+            {MOCK_DATA.pointages.filter(p=>p.employeeId===user.id&&p.departure).slice(0,3).map(p=>(
+              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--bl)"}}>
+                <div><div style={{fontSize:13,fontWeight:500}}>{new Date(p.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}</div><div style={{fontSize:12,color:"var(--ts)"}}>{p.arrival} — {p.departure}</div></div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>{p.photo&&<span style={{color:"var(--ok)"}}>{I.checkCircle}</span>}<span className="bg bg-s">Validé</span></div>
+              </div>
+            ))}
+          </div>
+        </>}
+        {tab==="taches" && (() => {
+          const [taskFilter, setTaskFilter] = [showTaskDetail || "all", setShowTaskDetail || (()=>{})];
+          // Use a more robust approach
+          return <TaskTab myTasks={myTasks} activeTasks={activeTasks} completedTasks={completedTasks} newTaskCount={newTaskCount} onUpdateTask={onUpdateTask} setSucc={setSucc} />;
+        })()}
+        {tab==="planning" && <div className="cd">
+          <div className="ch"><span className="ct">Semaine du 23 — 27 Mars</span></div>
+          {MOCK_DATA.planning.map((p,i)=>(
+            <div className="pd" key={i}>
+              <div className={`pdn ${p.day==="Jeu 26"?"td":""}`}>{p.day}{p.day==="Jeu 26"&&<div style={{fontSize:10,color:"var(--ac)",fontWeight:400}}>Aujourd'hui</div>}</div>
+              <div className="pdb"><div className="pdc">{p.chantier}</div><div className="pdh">{p.hours}</div></div>
+            </div>
+          ))}
+        </div>}
+        {tab==="conges" && <>
+          <div className="sg">{Object.entries(MOCK_DATA.soldes).map(([k,v])=>(<div className="si" key={k}><div className="sv">{v}</div><div className="sl">{k==="cp"?"Congés payés":k==="rtt"?"RTT":k==="anciennete"?"Ancienneté":"Maladie"}</div></div>))}</div>
+          <button className="bt bt-p" onClick={()=>setShowCF(true)} style={{marginBottom:20}}>{I.plus} Nouvelle demande</button>
+          <div className="cd">
+            <div className="ch"><span className="ct">Mes demandes</span></div>
+            {cgs.length===0?<div style={{textAlign:"center",padding:"40px 20px",color:"var(--tt)",fontSize:14}}>Aucune demande</div>:
+              cgs.map(c=>(<div className="cgi" key={c.id}><div className="cgi-i"><h4>{c.type} — {c.reason}</h4><p>{c.dateStart} → {c.dateEnd}</p></div><span className={`bg ${c.status==="En attente"?"bg-w":c.status==="Validé"?"bg-s":"bg-d"}`}>{c.status}</span></div>))}
+          </div>
+        </>}
+      </div>
+      <BN tabs={tabs} active={tab} onNav={setTab} />
+      {showPhoto && <Mod onClose={()=>setShowPhoto(false)}>
+        <h3 className="mt">Confirmer le pointage</h3>
+        <div className="ic ok" style={{marginBottom:16,display:"inline-flex"}}>{I.mapPin}<span>Résidence Les Oliviers — Position OK</span></div>
+        <div className={`pp ${photo?"tk":""}`} onClick={()=>setPhoto(true)}>
+          {photo?<div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#667eea,#764ba2)",borderRadius:"var(--rm)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,fontWeight:500}}>{I.checkCircle}<span style={{marginLeft:8}}>Photo capturée</span></div>:<>{I.image}<p>Prendre une photo du chantier</p></>}
+        </div>
+        <button className="bt bt-s" onClick={confirm} disabled={!photo} style={{opacity:photo?1:.5}}>{I.check} Confirmer mon arrivée</button>
+      </Mod>}
+      {showCF && <Mod onClose={()=>setShowCF(false)}>
+        <h3 className="mt">Demande de congé</h3>
+        <form onSubmit={submitC}>
+          <div className="fg"><label className="fl">Type</label><select className="fs" name="type" defaultValue="CP"><option value="CP">Congés payés</option><option value="RTT">RTT</option><option value="Ancienneté">Ancienneté</option><option value="Sans solde">Sans solde</option></select></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div className="fg"><label className="fl">Du</label><input type="date" className="fi" name="start" required /></div>
+            <div className="fg"><label className="fl">Au</label><input type="date" className="fi" name="end" required /></div>
+          </div>
+          <div className="fg"><label className="fl">Motif</label><textarea className="ft" name="reason" placeholder="Précisez le motif..." /></div>
+          <button type="submit" className="bt bt-p">{I.send} Envoyer la demande</button>
+        </form>
+      </Mod>}
+      {succ && <Succ text={succ.text} sub={succ.sub} onDone={()=>setSucc(null)} />}
+    </div>
+  );
+}
+
+// ═══ MANAGER CALENDAR ═══
+function Cal({ conges, chantiers, assignments, onAssign, onCongeAction, onReassign, onRemoveAssign, onAddConge, onAddTask }) {
+  const [curM, setCurM] = useState(new Date(2026, 2, 1));
+  const [selD, setSelD] = useState(new Date(2026, 2, 26));
+  const [showAsgn, setShowAsgn] = useState(false);
+  const [selEmps, setSelEmps] = useState([]);
+  const [asgnCh, setAsgnCh] = useState(chantiers[0]?.id || 1);
+  const [searchAddr, setSearchAddr] = useState("");
+  const [flagPin, setFlagPin] = useState(null);
+  const [showMap, setShowMap] = useState(true);
+  const mapRef = useRef(null);
+  const [activeEmpMenu, setActiveEmpMenu] = useState(null); // {empId, chantierId}
+  const [showReassign, setShowReassign] = useState(null); // {empId, fromChantierId}
+  const [showAddConge, setShowAddConge] = useState(null); // {empId}
+  const [showTaskForm, setShowTaskForm] = useState(null); // {empId, chantierId}
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!activeEmpMenu) return;
+    const handler = () => setActiveEmpMenu(null);
+    const t = setTimeout(() => document.addEventListener("click", handler), 10);
+    return () => { clearTimeout(t); document.removeEventListener("click", handler); };
+  }, [activeEmpMenu]);
+
+  const MO = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+  const DA = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+
+  const days = useMemo(() => {
+    const y = curM.getFullYear(), m = curM.getMonth();
+    let s = new Date(y, m, 1).getDay() - 1; if (s < 0) s = 6;
+    const n = new Date(y, m+1, 0).getDate();
+    const d = [];
+    for (let i = s-1; i >= 0; i--) d.push({ date: new Date(y, m, -i), om: true });
+    for (let i = 1; i <= n; i++) d.push({ date: new Date(y, m, i), om: false });
+    const r = 7 - (d.length % 7); if (r < 7) for (let i = 1; i <= r; i++) d.push({ date: new Date(y, m+1, i), om: true });
+    return d;
+  }, [curM]);
+
+  const getEv = useCallback((date) => {
+    const s = ds(date);
+    return {
+      conges: conges.filter(c => inRange(s, c.dateStart, c.dateEnd)),
+      asgn: assignments.filter(a => a.date === s),
+    };
+  }, [conges, assignments]);
+
+  const getDots = useCallback((date) => {
+    const ev = getEv(date);
+    const d = [];
+    if (ev.conges.some(c => c.status === "En attente")) d.push("cp");
+    if (ev.conges.some(c => c.status === "Validé")) d.push("ca");
+    if (ev.asgn.length > 0) d.push("ch");
+    return d;
+  }, [getEv]);
+
+  const todayS = "2026-03-26";
+  const selS = ds(selD);
+  const selEv = getEv(selD);
+  const isWe = (d) => { const w = d.getDay(); return w === 0 || w === 6; };
+
+  // ── Map helpers ──
+  const KNOWN_ADDR = [
+    { name: "Point P - Lyon 7e", lat: 45.7350, lng: 4.8400, type: "Distributeur" },
+    { name: "Leroy Merlin - Part-Dieu", lat: 45.7610, lng: 4.8580, type: "Distributeur" },
+    { name: "Brico Dépôt - Vénissieux", lat: 45.7050, lng: 4.8750, type: "Distributeur" },
+    { name: "Réseau Pro - Villeurbanne", lat: 45.7710, lng: 4.8900, type: "Distributeur" },
+    { name: "Gedimat - Caluire", lat: 45.7950, lng: 4.8550, type: "Distributeur" },
+    { name: "BigMat - Bron", lat: 45.7380, lng: 4.9100, type: "Distributeur" },
+    { name: "Castorama - Écully", lat: 45.7730, lng: 4.7780, type: "Distributeur" },
+    { name: "Würth - Lyon 3e", lat: 45.7530, lng: 4.8650, type: "Fournisseur" },
+    { name: "Rexel - Lyon 8e", lat: 45.7280, lng: 4.8700, type: "Fournisseur" },
+  ];
+
+  const filteredAddr = searchAddr.length >= 2 ? KNOWN_ADDR.filter(a => a.name.toLowerCase().includes(searchAddr.toLowerCase())) : [];
+
+  const haversine = (lat1, lng1, lat2, lng2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  };
+
+  // Active chantiers for selected day with employees
+  const activeChantiersForDay = useMemo(() => {
+    const grp = {};
+    selEv.asgn.forEach(a => {
+      if (!grp[a.chantierId]) grp[a.chantierId] = [];
+      grp[a.chantierId].push(a.employeeId);
+    });
+    return Object.entries(grp).map(([chId, empIds]) => {
+      const ch = chantiers.find(c => c.id === Number(chId));
+      const emps = empIds.map(eId => MOCK_DATA.employees.find(e => e.id === eId)).filter(Boolean);
+      const dist = flagPin ? haversine(ch.lat, ch.lng, flagPin.lat, flagPin.lng) : null;
+      return { ...ch, emps, dist };
+    }).sort((a, b) => (a.dist || 999) - (b.dist || 999));
+  }, [selEv.asgn, chantiers, flagPin]);
+
+  // Map bounds
+  const mapPoints = useMemo(() => {
+    const pts = activeChantiersForDay.map(c => ({ lat: c.lat, lng: c.lng }));
+    if (flagPin) pts.push({ lat: flagPin.lat, lng: flagPin.lng });
+    if (pts.length === 0) return { cx: 45.764, cy: 4.85, zoom: 12 };
+    const minLat = Math.min(...pts.map(p=>p.lat)), maxLat = Math.max(...pts.map(p=>p.lat));
+    const minLng = Math.min(...pts.map(p=>p.lng)), maxLng = Math.max(...pts.map(p=>p.lng));
+    const cx = (minLat+maxLat)/2, cy = (minLng+maxLng)/2;
+    const span = Math.max(maxLat-minLat, maxLng-minLng);
+    const zoom = span < 0.01 ? 14 : span < 0.03 ? 13 : span < 0.08 ? 12 : span < 0.2 ? 11 : 10;
+    return { cx, cy, zoom };
+  }, [activeChantiersForDay, flagPin]);
+
+  const doAssign = () => {
+    if (selEmps.length > 0) { onAssign(selS, selEmps, asgnCh); setShowAsgn(false); setSelEmps([]); }
+  };
+
+  return (
+    <div>
+      <div className="cal-hd">
+        <h2>Calendrier</h2>
+        <div className="cal-nav">
+          <button className="cal-nb" onClick={()=>setCurM(new Date(curM.getFullYear(),curM.getMonth()-1,1))}>{I.chevL}</button>
+          <div className="cal-ml">{MO[curM.getMonth()]} {curM.getFullYear()}</div>
+          <button className="cal-nb" onClick={()=>setCurM(new Date(curM.getFullYear(),curM.getMonth()+1,1))}>{I.chevR}</button>
+        </div>
+      </div>
+
+      <div className="cal-lg">
+        <div className="cal-li"><div className="cal-ld" style={{background:"var(--or)"}} /> Congé à valider</div>
+        <div className="cal-li"><div className="cal-ld" style={{background:"var(--ok)"}} /> Congé validé</div>
+        <div className="cal-li"><div className="cal-ld" style={{background:"var(--ac)"}} /> Chantier</div>
+      </div>
+
+      <div className="cal-g">
+        {DA.map(d => <div key={d} className="cal-dh">{d}</div>)}
+        {days.map((day, i) => {
+          const s = ds(day.date), dots = getDots(day.date);
+          return (
+            <div key={i} className={`cal-d ${day.om?"om":""} ${s===todayS?"td":""} ${s===selS&&!day.om?"sel":""} ${isWe(day.date)&&!day.om?"we":""}`} onClick={() => !day.om && setSelD(day.date)}>
+              <span className="cal-dn">{day.date.getDate()}</span>
+              {dots.length > 0 && !day.om && <div className="cal-dots">{dots.map((d,j) => <div key={j} className={`cal-dot ${d}`} />)}</div>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Day Detail */}
+      <div>
+        <div className="dd-hd">
+          <div className="dd-t">{selD.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div>
+        </div>
+
+        {/* ── MAP ── */}
+        {!isWe(selD) && activeChantiersForDay.length > 0 && (
+          <div className="map-section">
+            {/* Search bar */}
+            <div className="map-search-bar">
+              <div className="map-search-icon">
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>
+              <input className="map-search-input" placeholder="Rechercher un distributeur, une adresse..." value={searchAddr} onChange={e => { setSearchAddr(e.target.value); }} />
+              {(searchAddr || flagPin) && (
+                <button className="map-search-clear" onClick={() => { setSearchAddr(""); setFlagPin(null); }}>
+                  {I.x}
+                </button>
+              )}
+              {filteredAddr.length > 0 && !flagPin && (
+                <div className="map-results">
+                  {filteredAddr.map((a, i) => (
+                    <div key={i} className="map-result-item" onClick={() => { setFlagPin(a); setSearchAddr(a.name); }}>
+                      <div className="map-result-icon">
+                        {I.mapPin}
+                      </div>
+                      <div>
+                        <div className="map-result-name">{a.name}</div>
+                        <div className="map-result-type">{a.type}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Map canvas */}
+            <div className="map-container" ref={mapRef}>
+              {/* OSM tile background */}
+              <div className="map-tile" style={{
+                background: `url('https://maps.geoapify.com/v1/staticmap?style=osm-bright-smooth&width=430&height=240&center=lonlat:${mapPoints.cy},${mapPoints.cx}&zoom=${mapPoints.zoom}&apiKey=demo') center/cover no-repeat, linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #d1fae5 100%)`
+              }}>
+                {/* Grid lines for visual map feel */}
+                <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:.12}} viewBox="0 0 430 240">
+                  {[0,1,2,3,4,5,6,7,8].map(i => <line key={`h${i}`} x1="0" y1={i*30} x2="430" y2={i*30} stroke="#2563eb" strokeWidth=".5"/>)}
+                  {[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14].map(i => <line key={`v${i}`} x1={i*33} y1="0" x2={i*33} y2="240" stroke="#2563eb" strokeWidth=".5"/>)}
+                </svg>
+
+                {/* Road simulation lines */}
+                <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:.08}} viewBox="0 0 430 240">
+                  <path d="M0 120 Q100 80 215 120 Q330 160 430 100" stroke="#1a1a1a" strokeWidth="3" fill="none"/>
+                  <path d="M215 0 Q180 80 215 120 Q250 160 200 240" stroke="#1a1a1a" strokeWidth="2.5" fill="none"/>
+                  <path d="M80 0 Q90 60 120 120 Q140 170 100 240" stroke="#1a1a1a" strokeWidth="1.5" fill="none"/>
+                  <path d="M350 0 Q340 80 330 120 Q310 180 360 240" stroke="#1a1a1a" strokeWidth="1.5" fill="none"/>
+                </svg>
+
+                {/* Chantier pins */}
+                {activeChantiersForDay.map((ch, idx) => {
+                  // Position pins spread across the map
+                  const totalPins = activeChantiersForDay.length + (flagPin ? 1 : 0);
+                  const baseX = flagPin
+                    ? 30 + ((ch.lng - Math.min(...activeChantiersForDay.map(c=>c.lng), flagPin.lng)) / (Math.max(...activeChantiersForDay.map(c=>c.lng), flagPin.lng) - Math.min(...activeChantiersForDay.map(c=>c.lng), flagPin.lng) + 0.001)) * 340
+                    : 60 + idx * (310 / Math.max(activeChantiersForDay.length - 1, 1));
+                  const baseY = flagPin
+                    ? 30 + ((Math.max(...activeChantiersForDay.map(c=>c.lat), flagPin.lat) - ch.lat) / (Math.max(...activeChantiersForDay.map(c=>c.lat), flagPin.lat) - Math.min(...activeChantiersForDay.map(c=>c.lat), flagPin.lat) + 0.001)) * 160
+                    : 80 + (idx % 2 === 0 ? -20 : 30) + Math.sin(idx * 1.5) * 20;
+                  return (
+                    <div key={ch.id} className="map-pin" style={{ left: `${Math.max(30, Math.min(400, baseX))}px`, top: `${Math.max(30, Math.min(200, baseY))}px` }}>
+                      <div className="map-pin-dot" style={{ background: ch.color }} />
+                      <div className="map-pin-label" style={{ borderLeft: `3px solid ${ch.color}` }}>
+                        {ch.name.split(" ").slice(0, 2).join(" ")}
+                        <span style={{ marginLeft: 4, opacity: 0.5 }}>{ch.emps.length}p</span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Flag pin for searched location */}
+                {flagPin && (
+                  <div className="map-flag" style={{
+                    left: `${30 + ((flagPin.lng - Math.min(...activeChantiersForDay.map(c=>c.lng), flagPin.lng)) / (Math.max(...activeChantiersForDay.map(c=>c.lng), flagPin.lng) - Math.min(...activeChantiersForDay.map(c=>c.lng), flagPin.lng) + 0.001)) * 340}px`,
+                    top: `${30 + ((Math.max(...activeChantiersForDay.map(c=>c.lat), flagPin.lat) - flagPin.lat) / (Math.max(...activeChantiersForDay.map(c=>c.lat), flagPin.lat) - Math.min(...activeChantiersForDay.map(c=>c.lat), flagPin.lat) + 0.001)) * 160}px`
+                  }}>
+                    <div className="map-flag-banner" />
+                    <div className="map-flag-pole" />
+                    <div className="map-flag-label">{flagPin.name.split(" - ")[0]}</div>
+                  </div>
+                )}
+
+                {/* Distance lines from flag to chantiers */}
+                {flagPin && (
+                  <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:4}} viewBox="0 0 430 240">
+                    {activeChantiersForDay.map((ch, idx) => {
+                      const allLngs = [...activeChantiersForDay.map(c=>c.lng), flagPin.lng];
+                      const allLats = [...activeChantiersForDay.map(c=>c.lat), flagPin.lat];
+                      const minLng = Math.min(...allLngs), maxLng = Math.max(...allLngs);
+                      const minLat = Math.min(...allLats), maxLat = Math.max(...allLats);
+                      const rangeL = maxLng - minLng + 0.001, rangeA = maxLat - minLat + 0.001;
+                      const fx = 30 + ((flagPin.lng - minLng) / rangeL) * 340;
+                      const fy = 30 + ((maxLat - flagPin.lat) / rangeA) * 160;
+                      const cx = 30 + ((ch.lng - minLng) / rangeL) * 340;
+                      const cy = 30 + ((maxLat - ch.lat) / rangeA) * 160;
+                      return <line key={idx} x1={fx} y1={fy} x2={cx} y2={cy} stroke={ch.color} strokeWidth="1.5" strokeDasharray="6 4" opacity=".5" />;
+                    })}
+                  </svg>
+                )}
+              </div>
+            </div>
+
+            {/* Distance cards when flag is set */}
+            {flagPin && (
+              <div className="map-dist-card">
+                <div className="map-dist-title">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  Chantiers les plus proches de {flagPin.name.split(" - ")[0]}
+                </div>
+                {activeChantiersForDay.map(ch => {
+                  const d = ch.dist;
+                  const cls = d < 2 ? "near" : d < 5 ? "mid" : "far";
+                  return (
+                    <div className="map-dist-row" key={ch.id}>
+                      <div className="ccd" style={{background:ch.color}} />
+                      <div className="map-dist-info">
+                        <div className="map-dist-ch">{ch.name}</div>
+                        <div className="map-dist-emps">{ch.emps.map(e => e.name).join(", ")}</div>
+                      </div>
+                      <div className={`map-dist-val ${cls}`}>{d < 1 ? `${Math.round(d*1000)}m` : `${d.toFixed(1)}km`}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* No flag hint */}
+            {!flagPin && (
+              <div style={{padding:"10px 14px",fontSize:12,color:"var(--tt)",textAlign:"center",borderTop:"1px solid var(--bl)"}}>
+                Recherchez une adresse pour voir les équipes les plus proches
+              </div>
+            )}
+          </div>
+        )}
+
+        {selEv.conges.length > 0 && <>
+          <div className="sct" style={{marginTop:0}}>Congés</div>
+          {selEv.conges.map(c => {
+            const emp = MOCK_DATA.employees.find(e => e.id === c.employeeId);
+            const pend = c.status === "En attente";
+            return (
+              <div key={c.id} className={`cal-ev ${pend?"cp":"ca"}`}>
+                <div className="ea" style={{background:pend?"var(--or)":"var(--ok)",width:32,height:32,fontSize:11}}>{emp?.avatar}</div>
+                <div style={{flex:1}}><div className="cal-en">{emp?.name}</div><div className="cal-es">{c.type} · {c.dateStart} → {c.dateEnd}</div></div>
+                {pend ? (
+                  <div className="ca"><button className="cab ap" onClick={()=>onCongeAction(c.id,"approve")}>{I.check}</button><button className="cab rj" onClick={()=>onCongeAction(c.id,"reject")}>{I.x}</button></div>
+                ) : (
+                  <span className="cal-eb" style={{background:"var(--ol)",color:"var(--ok)"}}>Validé</span>
+                )}
+              </div>
+            );
+          })}
+        </>}
+
+        {selEv.asgn.length > 0 && <>
+          <div className="sct">Affectations</div>
+          {(() => {
+            const grp = {};
+            selEv.asgn.forEach(a => { if (!grp[a.chantierId]) grp[a.chantierId] = []; grp[a.chantierId].push(a.employeeId); });
+            return Object.entries(grp).map(([chId, eIds]) => {
+              const ch = chantiers.find(c => c.id === Number(chId));
+              return (
+                <div key={chId} className="cd" style={{marginBottom:8,padding:14}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                    <div className="ccd" style={{background:ch?.color||"#2563eb"}} />
+                    <div style={{fontWeight:600,fontSize:13}}>{ch?.name}</div>
+                  </div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {eIds.map(eId => {
+                      const emp = MOCK_DATA.employees.find(e => e.id === eId);
+                      const isMenuOpen = activeEmpMenu?.empId === eId && activeEmpMenu?.chantierId === Number(chId);
+                      return (
+                        <div key={eId} className="emp-chip" style={{background:"var(--al)"}}
+                          onClick={(e) => { e.stopPropagation(); setActiveEmpMenu(isMenuOpen ? null : {empId: eId, chantierId: Number(chId)}); }}>
+                          <div className="ea" style={{background:ch?.color||"#2563eb",width:24,height:24,fontSize:9}}>{emp?.avatar}</div>
+                          {emp?.name}
+                          <div className="emp-chip-edit">{I.edit}</div>
+                          {isMenuOpen && (
+                            <div className="emp-chip-actions" onClick={e => e.stopPropagation()}>
+                              <div className="emp-chip-action" onClick={() => { setShowReassign({empId: eId, fromChantierId: Number(chId)}); setActiveEmpMenu(null); }}>
+                                <div className="emp-chip-action-icon blue">{I.swap}</div>
+                                <div><div style={{fontWeight:600}}>Changer de chantier</div><div style={{fontSize:11,color:"var(--ts)",marginTop:1}}>Réaffecter sur un autre site</div></div>
+                              </div>
+                              <div className="emp-chip-action" onClick={() => { setShowTaskForm({empId: eId, chantierId: Number(chId)}); setActiveEmpMenu(null); }}>
+                                <div className="emp-chip-action-icon blue" style={{background:"#ede9fe",color:"#7c3aed"}}>{I.taskSm}</div>
+                                <div><div style={{fontWeight:600}}>Attribuer une tâche</div><div style={{fontSize:11,color:"var(--ts)",marginTop:1}}>Envoyer une consigne ou mission</div></div>
+                              </div>
+                              <div className="emp-chip-action warning" onClick={() => { setShowAddConge({empId: eId}); setActiveEmpMenu(null); }}>
+                                <div className="emp-chip-action-icon orange">{I.calPlus}</div>
+                                <div><div style={{fontWeight:600}}>Poser un congé</div><div style={{fontSize:11,color:"var(--ts)",marginTop:1}}>Créer une absence ce jour</div></div>
+                              </div>
+                              <div className="emp-chip-action danger" onClick={() => { onRemoveAssign(selS, eId); setActiveEmpMenu(null); }}>
+                                <div className="emp-chip-action-icon red">{I.trash}</div>
+                                <div><div style={{fontWeight:600}}>Retirer du chantier</div><div style={{fontSize:11,color:"var(--ts)",marginTop:1}}>Désaffecter ce jour</div></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </>}
+
+        {selEv.conges.length===0 && selEv.asgn.length===0 && (
+          <div style={{textAlign:"center",padding:"24px 0",color:"var(--tt)",fontSize:13}}>Aucun événement ce jour</div>
+        )}
+
+        {/* Available / Unavailable employees */}
+        {!isWe(selD) && (() => {
+          const availEmps = [];
+          const unavailEmps = [];
+          MOCK_DATA.employees.forEach(emp => {
+            const hasCg = conges.some(c => c.employeeId === emp.id && inRange(selS, c.dateStart, c.dateEnd));
+            const hasAsgn = assignments.some(a => a.date === selS && a.employeeId === emp.id);
+            if (hasCg) unavailEmps.push({ ...emp, reason: "cg", label: "En congé" });
+            else if (hasAsgn) {
+              const a = assignments.find(a => a.date === selS && a.employeeId === emp.id);
+              const ch = chantiers.find(c => c.id === a.chantierId);
+              unavailEmps.push({ ...emp, reason: "af", label: ch?.name || "Affecté" });
+            }
+            else availEmps.push(emp);
+          });
+          return (
+            <div className="avail-section">
+              <div className="avail-hd">
+                <div className="avail-title">Disponibles <span className="avail-count">{availEmps.length}</span></div>
+              </div>
+              {availEmps.length > 0 ? (
+                <div className="avail-list">
+                  {availEmps.map(emp => (
+                    <div key={emp.id} className="avail-row" onClick={() => { setSelEmps([emp.id]); setShowAsgn(true); }}>
+                      <div className="ea" style={{background:"#6366f1"}}>{emp.avatar}</div>
+                      <div>
+                        <div className="avail-name">{emp.name}</div>
+                        <div className="avail-meta">{emp.role} — {emp.team}</div>
+                      </div>
+                      <div className="avail-badge">Disponible</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{textAlign:"center",padding:"12px 0",color:"var(--tt)",fontSize:12}}>Tous les salariés sont occupés</div>
+              )}
+
+              {unavailEmps.length > 0 && (
+                <div className="unavail-section">
+                  <div style={{fontSize:11,fontWeight:600,color:"var(--tt)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6,marginTop:4}}>Indisponibles</div>
+                  {unavailEmps.map(emp => (
+                    <div key={emp.id} className="unavail-row">
+                      <div className="ea" style={{background:"#94a3b8"}}>{emp.avatar}</div>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:600}}>{emp.name}</div>
+                        <div style={{fontSize:11,color:"var(--ts)"}}>{emp.role}</div>
+                      </div>
+                      <div className={`unavail-reason ${emp.reason}`}>{emp.label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {!isWe(selD) && (
+          <button className="asgn-btn" onClick={()=>{setShowAsgn(true);setSelEmps([]);}}>
+            {I.plus} Planifier sur ce jour
+          </button>
+        )}
+      </div>
+
+      {showAsgn && <Mod onClose={()=>setShowAsgn(false)}>
+        <h3 className="mt">Planifier — {selD.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</h3>
+        <div className="fg">
+          <label className="fl">Chantier</label>
+          <select className="fs" value={asgnCh} onChange={e=>setAsgnCh(Number(e.target.value))}>
+            {chantiers.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+          </select>
+        </div>
+        <div className="fl" style={{marginBottom:10}}>Sélectionner les salariés</div>
+        {MOCK_DATA.employees.map(emp => {
+          const sel = selEmps.includes(emp.id);
+          const hasCg = conges.some(c => c.employeeId===emp.id && inRange(selS,c.dateStart,c.dateEnd));
+          const already = assignments.some(a => a.date===selS && a.employeeId===emp.id);
+          const dis = hasCg || already;
+          return (
+            <div key={emp.id} className={`asgn-r ${sel?"sel":""}`} style={dis?{opacity:.4,pointerEvents:"none"}:{}} onClick={()=>!dis&&setSelEmps(p=>p.includes(emp.id)?p.filter(x=>x!==emp.id):[...p,emp.id])}>
+              <div className="ea" style={{background:"#6366f1",width:34,height:34,fontSize:11}}>{emp.avatar}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:600}}>{emp.name}</div>
+                <div style={{fontSize:11,color:"var(--ts)"}}>{dis?(hasCg?"En congé":"Déjà affecté"):`${emp.role} — ${emp.team}`}</div>
+              </div>
+              <div className="asgn-ck">{sel && I.checkSm}</div>
+            </div>
+          );
+        })}
+        <button className="bt bt-p" style={{marginTop:16,opacity:selEmps.length>0?1:.5}} onClick={doAssign} disabled={selEmps.length===0}>{I.check} Affecter {selEmps.length>0?`${selEmps.length} salarié(s)`:""}</button>
+      </Mod>}
+
+      {/* Reassign modal */}
+      {showReassign && (() => {
+        const emp = MOCK_DATA.employees.find(e => e.id === showReassign.empId);
+        const fromCh = chantiers.find(c => c.id === showReassign.fromChantierId);
+        const otherChantiers = chantiers.filter(c => c.id !== showReassign.fromChantierId);
+        return (
+          <Mod onClose={() => setShowReassign(null)}>
+            <h3 className="mt">Réaffecter {emp?.name}</h3>
+            <div className="cal-ev cx" style={{marginBottom:16}}>
+              <div className="ea" style={{background:fromCh?.color||"#2563eb",width:32,height:32,fontSize:11}}>{emp?.avatar}</div>
+              <div style={{flex:1}}>
+                <div className="cal-en">Actuellement sur</div>
+                <div className="cal-es">{fromCh?.name} — {selD.toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</div>
+              </div>
+            </div>
+            <div className="fl" style={{marginBottom:10}}>Choisir le nouveau chantier</div>
+            {otherChantiers.map(ch => (
+              <div key={ch.id} className="asgn-r" style={{cursor:"pointer"}} onClick={() => {
+                onReassign(selS, showReassign.empId, showReassign.fromChantierId, ch.id);
+                setShowReassign(null);
+              }}>
+                <div className="ccd" style={{background:ch.color,width:14,height:14}} />
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600}}>{ch.name}</div>
+                  <div style={{fontSize:11,color:"var(--ts)"}}>{ch.address}</div>
+                </div>
+                <div style={{color:"var(--ac)"}}>{I.chevR}</div>
+              </div>
+            ))}
+          </Mod>
+        );
+      })()}
+
+      {/* Add congé modal */}
+      {showAddConge && (() => {
+        const emp = MOCK_DATA.employees.find(e => e.id === showAddConge.empId);
+        return (
+          <Mod onClose={() => setShowAddConge(null)}>
+            <h3 className="mt">Poser un congé — {emp?.name}</h3>
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:12,background:"var(--bg)",borderRadius:"var(--rs)",marginBottom:16}}>
+              <div className="ea" style={{background:"#6366f1",width:36,height:36,fontSize:12}}>{emp?.avatar}</div>
+              <div>
+                <div style={{fontSize:14,fontWeight:600}}>{emp?.name}</div>
+                <div style={{fontSize:12,color:"var(--ts)"}}>{emp?.role} — {emp?.team}</div>
+              </div>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.target);
+              onAddConge({
+                employeeId: showAddConge.empId,
+                type: fd.get("type"),
+                dateStart: fd.get("start"),
+                dateEnd: fd.get("end"),
+                reason: fd.get("reason"),
+              });
+              setShowAddConge(null);
+            }}>
+              <div className="fg">
+                <label className="fl">Type de congé</label>
+                <select className="fs" name="type" defaultValue="CP">
+                  <option value="CP">Congés payés</option>
+                  <option value="RTT">RTT</option>
+                  <option value="Ancienneté">Ancienneté</option>
+                  <option value="Maladie">Arrêt maladie</option>
+                  <option value="Sans solde">Sans solde</option>
+                  <option value="Exceptionnel">Congé exceptionnel</option>
+                </select>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div className="fg">
+                  <label className="fl">Du</label>
+                  <input type="date" className="fi" name="start" defaultValue={selS} required />
+                </div>
+                <div className="fg">
+                  <label className="fl">Au</label>
+                  <input type="date" className="fi" name="end" defaultValue={selS} required />
+                </div>
+              </div>
+              <div className="fg">
+                <label className="fl">Motif</label>
+                <textarea className="ft" name="reason" placeholder="Motif du congé..." style={{minHeight:60}} />
+              </div>
+              <button type="submit" className="bt bt-p">{I.check} Valider le congé</button>
+            </form>
+          </Mod>
+        );
+      })()}
+
+      {/* Task creation modal */}
+      {showTaskForm && (() => {
+        const emp = MOCK_DATA.employees.find(e => e.id === showTaskForm.empId);
+        const ch = chantiers.find(c => c.id === showTaskForm.chantierId);
+        return (
+          <Mod onClose={() => setShowTaskForm(null)}>
+            <h3 className="mt">Attribuer une tâche</h3>
+            {/* Assignee display */}
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:12,background:"var(--bg)",borderRadius:"var(--rs)",marginBottom:16}}>
+              <div className="ea" style={{background:ch?.color||"#6366f1",width:36,height:36,fontSize:12}}>{emp?.avatar}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:600}}>{emp?.name}</div>
+                <div style={{fontSize:12,color:"var(--ts)"}}>{emp?.role} — {ch?.name}</div>
+              </div>
+              <div style={{fontSize:12,color:"var(--ts)",display:"flex",alignItems:"center",gap:4}}>{I.calendar} {selD.toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</div>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.target);
+              onAddTask({
+                assigneeId: showTaskForm.empId,
+                chantierId: showTaskForm.chantierId,
+                date: selS,
+                title: fd.get("title"),
+                description: fd.get("description"),
+                priority: fd.get("priority"),
+                responseType: fd.get("responseType"),
+                deadline: fd.get("deadline") || null,
+                createdBy: "Marie Laurent",
+                response: null,
+              });
+              setShowTaskForm(null);
+            }}>
+              <div className="fg">
+                <label className="fl">Titre de la tâche</label>
+                <input type="text" className="fi" name="title" placeholder="Ex: Vérifier les soudures du portail" required />
+              </div>
+              <div className="fg">
+                <label className="fl">Description / consignes</label>
+                <textarea className="ft" name="description" placeholder="Détaillez la tâche, les consignes, le matériel nécessaire..." style={{minHeight:80}} />
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div className="fg">
+                  <label className="fl">Priorité</label>
+                  <select className="fs" name="priority" defaultValue="medium">
+                    <option value="low">🟢 Basse</option>
+                    <option value="medium">🟠 Moyenne</option>
+                    <option value="high">🔴 Haute</option>
+                  </select>
+                </div>
+                <div className="fg">
+                  <label className="fl">Date limite</label>
+                  <input type="date" className="fi" name="deadline" defaultValue={selS} />
+                </div>
+              </div>
+              <div className="fg">
+                <label className="fl">Type de réponse attendue</label>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[
+                    {val:"done",icon:"✅",label:"Fait / Pas fait",desc:"Confirmation simple"},
+                    {val:"yesno",icon:"👍",label:"Oui / Non",desc:"Question fermée"},
+                    {val:"photo",icon:"📸",label:"Photo",desc:"Justificatif visuel"},
+                    {val:"message",icon:"💬",label:"Message",desc:"Réponse libre"},
+                  ].map(r => (
+                    <label key={r.val} style={{display:"flex",flexDirection:"column",gap:2,padding:"12px 10px",borderRadius:"var(--rs)",border:"1.5px solid var(--bl)",cursor:"pointer",transition:"all .15s",background:"var(--bgc)"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <input type="radio" name="responseType" value={r.val} defaultChecked={r.val==="done"} style={{accentColor:"var(--ac)"}} />
+                        <span style={{fontSize:14}}>{r.icon}</span>
+                        <span style={{fontSize:13,fontWeight:600}}>{r.label}</span>
+                      </div>
+                      <span style={{fontSize:11,color:"var(--ts)",marginLeft:26}}>{r.desc}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <button type="submit" className="bt bt-p" style={{background:"#7c3aed",boxShadow:"0 4px 12px rgba(124,58,237,.25)"}}>
+                {I.send} Envoyer la tâche
+              </button>
+            </form>
+          </Mod>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ═══ TIMESHEET (Manager) ═══
+function Timesheet({ conges }) {
+  const [mode, setMode] = useState("week"); // week or month
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const today = new Date(2026, 2, 26);
+  const todayStr = "2026-03-26";
+  const emps = MOCK_DATA.employees;
+  const pts = MOCK_DATA.pointages;
+
+  const getHours = (a, d) => {
+    if (!d) return 0;
+    const [ah,am] = a.split(":").map(Number);
+    const [dh,dm] = d.split(":").map(Number);
+    return Math.max(0, (dh - ah) + (dm - am) / 60);
+  };
+
+  const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
+
+  const getConge = (empId, dateStr) => {
+    return conges.find(c => c.employeeId === empId && dateStr >= c.dateStart && dateStr <= c.dateEnd && (c.status === "Validé" || c.status === "En attente"));
+  };
+
+  // Week mode
+  const getWeekDays = () => {
+    const mon = new Date(2026, 2, 23 + weekOffset * 7);
+    return Array.from({length: 7}, (_, i) => {
+      const d = new Date(mon);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  };
+
+  // Month mode
+  const getMonthDays = () => {
+    const m = new Date(2026, 2 + monthOffset, 1);
+    const daysInMonth = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+    return Array.from({length: daysInMonth}, (_, i) => new Date(m.getFullYear(), m.getMonth(), i + 1));
+  };
+
+  const days = mode === "week" ? getWeekDays() : getMonthDays();
+  const JOURS = ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+  const MOIS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
+  const navLabel = mode === "week"
+    ? `Sem. ${Math.ceil((days[0].getDate() + new Date(days[0].getFullYear(), days[0].getMonth(), 1).getDay()) / 7)} — ${MOIS[days[0].getMonth()]} ${days[0].getFullYear()}`
+    : `${MOIS[days[0].getMonth()]} ${days[0].getFullYear()}`;
+
+  const prev = () => mode === "week" ? setWeekOffset(w => w - 1) : setMonthOffset(m => m - 1);
+  const next = () => mode === "week" ? setWeekOffset(w => w + 1) : setMonthOffset(m => m + 1);
+  const goToday = () => { setWeekOffset(0); setMonthOffset(0); };
+
+  // Compute all data
+  const rows = emps.map(emp => {
+    let totalH = 0;
+    let absenceDays = 0;
+    const cells = days.map(day => {
+      const dStr = ds(day);
+      const we = isWeekend(day);
+      const cg = getConge(emp.id, dStr);
+      const pt = pts.find(p => p.employeeId === emp.id && p.date === dStr && p.departure);
+      const ptLive = pts.find(p => p.employeeId === emp.id && p.date === dStr && !p.departure);
+      const h = pt ? getHours(pt.arrival, pt.departure) : 0;
+      if (h > 0) totalH += h;
+      if (cg) absenceDays++;
+      return { day, dStr, we, cg, h, ptLive, isToday: dStr === todayStr };
+    });
+    return { emp, cells, totalH, absenceDays };
+  });
+
+  // Totals row
+  const dayTotals = days.map((day, i) => {
+    return rows.reduce((sum, r) => sum + r.cells[i].h, 0);
+  });
+  const grandTotal = rows.reduce((s, r) => s + r.totalH, 0);
+
+  return (
+    <>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:4}}>Feuille de temps</h2>
+      <p style={{fontSize:13,color:"var(--ts)",marginBottom:14}}>Suivi des heures par salarié</p>
+
+      {/* Mode toggle */}
+      <div className="ts-mode">
+        <button className={`ts-mode-btn ${mode==="week"?"active":""}`} onClick={()=>setMode("week")}>Semaine</button>
+        <button className={`ts-mode-btn ${mode==="month"?"active":""}`} onClick={()=>setMode("month")}>Mois</button>
+      </div>
+
+      {/* Navigation */}
+      <div className="ts-nav">
+        <div className="ts-nav-btns">
+          <button className="ts-nav-btn" onClick={prev}>{I.chevL}</button>
+          <button className="ts-nav-btn" onClick={goToday} style={{fontSize:11,fontWeight:600,width:"auto",padding:"0 10px"}}>Auj.</button>
+          <button className="ts-nav-btn" onClick={next}>{I.chevR}</button>
+        </div>
+        <div className="ts-nav-label">{navLabel}</div>
+      </div>
+
+      {/* Summary cards */}
+      <div className="ts-summary">
+        <div className="ts-summary-card">
+          <div className="ts-summary-val" style={{color:"var(--ac)"}}>{grandTotal.toFixed(0)}<span style={{fontSize:12,opacity:.6}}>h</span></div>
+          <div className="ts-summary-label">Total heures</div>
+        </div>
+        <div className="ts-summary-card">
+          <div className="ts-summary-val" style={{color:"var(--wa)"}}>{rows.reduce((s,r)=>s+r.absenceDays,0)}</div>
+          <div className="ts-summary-label">Jours d'absence</div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="ts-legend">
+        <div className="ts-legend-item"><div className="ts-legend-dot" style={{background:"var(--ac)"}} />Heures pointées</div>
+        <div className="ts-legend-item"><div className="ts-legend-dot" style={{background:"var(--or)"}} />Congé</div>
+        <div className="ts-legend-item"><div className="ts-legend-dot" style={{background:"var(--bg)",border:"1px solid var(--bl)"}} />Week-end</div>
+      </div>
+
+      {/* Table */}
+      <div className="ts-scroll">
+        <table className="ts-table">
+          <thead>
+            <tr>
+              <th>Salarié</th>
+              {days.map((d, i) => {
+                const dStr = ds(d);
+                const we = isWeekend(d);
+                const isToday = dStr === todayStr;
+                return (
+                  <th key={i} className={`ts-cell ${isToday?"ts-th-today":""} ${we?"ts-th-we":""}`}>
+                    <div>{JOURS[d.getDay()].charAt(0)}</div>
+                    <div style={{fontSize:mode==="month"?8:10}}>{d.getDate()}</div>
+                  </th>
+                );
+              })}
+              <th style={{minWidth:44}}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({emp, cells, totalH}) => (
+              <tr key={emp.id}>
+                <td>
+                  <div className="ts-emp-cell">
+                    <div className="ea" style={{background:"#6366f1"}}>{emp.avatar}</div>
+                    <div className="ts-emp-name">{emp.name.split(" ")[0]}</div>
+                  </div>
+                </td>
+                {cells.map((c, i) => (
+                  <td key={i} className={`ts-cell ${c.isToday?"today":""} ${c.we?"weekend":""} ${c.cg?"ts-conge":""}`}>
+                    {c.cg ? (
+                      <span>{c.cg.type}</span>
+                    ) : c.we ? (
+                      <span className="ts-empty">—</span>
+                    ) : c.h > 0 ? (
+                      <span className="ts-hours">{c.h.toFixed(1)}</span>
+                    ) : c.ptLive ? (
+                      <span style={{color:"var(--ok)",fontSize:10}}>●</span>
+                    ) : c.dStr <= todayStr ? (
+                      <span className="ts-absent">ABS</span>
+                    ) : (
+                      <span className="ts-empty">·</span>
+                    )}
+                  </td>
+                ))}
+                <td><span className="ts-total">{totalH.toFixed(1)}</span></td>
+              </tr>
+            ))}
+            {/* Totals row */}
+            <tr className="ts-total-row">
+              <td>TOTAL</td>
+              {dayTotals.map((t, i) => (
+                <td key={i} className={`ts-cell ${days[i] && ds(days[i])===todayStr?"today":""}`}>
+                  {t > 0 ? <span>{t.toFixed(0)}</span> : <span style={{opacity:.3}}>—</span>}
+                </td>
+              ))}
+              <td><span style={{color:"var(--ac)",fontSize:13}}>{grandTotal.toFixed(0)}h</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Per-employee detail cards */}
+      <div className="sct">Détail par salarié</div>
+      {rows.map(({emp, totalH, absenceDays, cells}) => {
+        const workedDays = cells.filter(c => c.h > 0).length;
+        const avgPerDay = workedDays > 0 ? totalH / workedDays : 0;
+        return (
+          <div className="cd" key={emp.id} style={{padding:14,marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div className="ea" style={{background:"#6366f1"}}>{emp.avatar}</div>
+              <div style={{flex:1}}>
+                <div className="en">{emp.name}</div>
+                <div className="erl">{emp.role} — {emp.team}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontFamily:"var(--fm)",fontSize:16,fontWeight:700,color:"var(--ac)"}}>{totalH.toFixed(1)}h</div>
+                <div style={{fontSize:10,color:"var(--ts)"}}>{workedDays}j travaillés</div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:12,marginTop:10,fontSize:12,color:"var(--ts)"}}>
+              <span>Moy/jour : <strong style={{color:"var(--tp)"}}>{avgPerDay.toFixed(1)}h</strong></span>
+              {absenceDays > 0 && <span style={{color:"var(--or)"}}>Absences : <strong>{absenceDays}j</strong></span>}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// ═══ MEETING ASSISTANT ═══
+function MeetingAssistant({ chantiers }) {
+  const [meetChantier, setMeetChantier] = useState(chantiers[0]?.id || "");
+  const [meetTitle, setMeetTitle] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcript, setTranscript] = useState([]);
+  const [liveLine, setLiveLine] = useState("");
+  const [timer, setTimer] = useState(0);
+  const [synthesis, setSynthesis] = useState(null);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [pastMeetings, setPastMeetings] = useState([
+    { id: 1, title: "Réunion avancement lot gros-œuvre", chantier: "Résidence Les Oliviers", date: "2026-03-24", duration: "18 min", synthesis: "**Points abordés :**\n• Avancement coffrage escalier B — retard d'1 jour rattrapable\n• Livraison parpaings confirmée pour le 25/03\n• Problème d'humidité sous-sol à surveiller\n\n**Décisions prises :**\n• Lucas vérifie l'étanchéité mercredi matin\n• Commander 2 palettes de mortier supplémentaires\n• Prochaine réunion vendredi 14h\n\n**Actions à mener :**\n1. Lucas — Vérifier coffrage escalier B avant coulage\n2. Sophie — Commander mortier chez Point P\n3. Thomas — Reprendre câblage étage 2 après séchage" },
+    { id: 2, title: "Point sécurité hebdo", chantier: "Bureau Parc Technologique", date: "2026-03-20", duration: "12 min", synthesis: "**Sécurité :**\n• EPI conformes pour tous les intervenants\n• Signalétique zone de déchargement à renforcer\n• Extincteur étage 1 à remplacer\n\n**Actions :**\n1. Marc — Poser la nouvelle signalétique\n2. Julie — Commander extincteur" },
+  ]);
+  const [viewingPast, setViewingPast] = useState(null);
+  const recognRef = useRef(null);
+  const timerRef = useRef(null);
+
+  // Start/stop recording
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  const startRecording = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      // Fallback: simulate transcript
+      setIsRecording(true);
+      setTimer(0);
+      setTranscript([]);
+      setSynthesis(null);
+      timerRef.current = setInterval(() => setTimer(t => t + 1), 1000);
+      // Simulate incoming speech
+      const simLines = [
+        "Bon, on fait le point sur l'avancement du chantier cette semaine.",
+        "Lucas, où en est-on sur le coffrage de l'escalier B ?",
+        "On a pris un jour de retard à cause de la pluie de mardi, mais c'est rattrapable.",
+        "Il faut absolument que ce soit prêt pour le coulage de lundi.",
+        "Thomas, les câbles RJ45 étage 2, c'est bouclé ?",
+        "Presque, il me reste une gaine à tirer côté nord. Je finis demain matin.",
+        "Sophie, on a reçu la livraison de parpaings ?",
+        "Oui, tout est conforme au bon de commande. J'ai vérifié les quantités.",
+        "Parfait. Point important : j'ai remarqué une fissure sur le mur porteur côté nord.",
+        "Il faudrait qu'on fasse venir un expert pour vérifier ça rapidement.",
+        "Je m'en occupe, je contacte le bureau d'études demain matin.",
+        "Dernière chose, on a besoin de commander du mortier supplémentaire chez Point P.",
+        "Ok, je gère la commande cet après-midi. On se revoit vendredi 14h.",
+      ];
+      let idx = 0;
+      const simInterval = setInterval(() => {
+        if (idx < simLines.length) {
+          setTranscript(p => [...p, simLines[idx]]);
+          idx++;
+        }
+        if (idx >= simLines.length) clearInterval(simInterval);
+      }, 3000);
+      recognRef.current = { simInterval };
+      return;
+    }
+
+    const recog = new SpeechRecognition();
+    recog.continuous = true;
+    recog.interimResults = true;
+    recog.lang = "fr-FR";
+
+    recog.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          setTranscript(p => [...p, t.trim()]);
+          setLiveLine("");
+        } else {
+          interim = t;
+        }
+      }
+      if (interim) setLiveLine(interim);
+    };
+
+    recog.onerror = () => {};
+    recog.start();
+    recognRef.current = recog;
+    setIsRecording(true);
+    setTimer(0);
+    setTranscript([]);
+    setSynthesis(null);
+    timerRef.current = setInterval(() => setTimer(t => t + 1), 1000);
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+    setLiveLine("");
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (recognRef.current) {
+      if (recognRef.current.simInterval) clearInterval(recognRef.current.simInterval);
+      else if (recognRef.current.stop) recognRef.current.stop();
+    }
+  };
+
+  // AI synthesis via Anthropic API
+  const synthesize = async () => {
+    if (transcript.length === 0) return;
+    setIsSynthesizing(true);
+    const fullTranscript = transcript.join("\n");
+    const ch = chantiers.find(c => c.id === Number(meetChantier));
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{
+            role: "user",
+            content: `Tu es un assistant de chantier BTP. Voici le transcript d'une réunion de chantier${ch ? ` pour le chantier "${ch.name}"` : ""}${meetTitle ? `, intitulée "${meetTitle}"` : ""}.
+
+Fais une synthèse structurée avec :
+1. **Points abordés** — résumé des sujets discutés
+2. **Décisions prises** — ce qui a été acté
+3. **Actions à mener** — liste numérotée avec le responsable et la tâche
+
+Sois concis et opérationnel.
+
+TRANSCRIPT :
+${fullTranscript}`
+          }]
+        })
+      });
+      const data = await response.json();
+      const text = data.content?.map(i => i.text || "").join("\n") || "Erreur lors de la synthèse.";
+      setSynthesis(text);
+      // Save to past meetings
+      setPastMeetings(p => [{
+        id: Date.now(),
+        title: meetTitle || "Réunion de chantier",
+        chantier: ch?.name || "—",
+        date: "2026-03-26",
+        duration: `${Math.floor(timer/60)} min`,
+        synthesis: text,
+      }, ...p]);
+    } catch (err) {
+      // Fallback synthesis
+      setSynthesis(`**Points abordés :**\n• Avancement coffrage escalier B — retard d'1 jour\n• Câblage RJ45 étage 2 en cours de finalisation\n• Livraison parpaings reçue et conforme\n• Fissure détectée sur mur porteur côté nord\n• Besoin commande mortier supplémentaire\n\n**Décisions prises :**\n• Coffrage doit être prêt pour coulage lundi\n• Expert bureau d'études à contacter pour la fissure\n• Prochaine réunion vendredi 14h\n\n**Actions à mener :**\n1. Lucas — Finaliser coffrage escalier B\n2. Thomas — Terminer gaine câblage côté nord\n3. Sophie — Contacter bureau d'études pour fissure\n4. Manager — Commander mortier chez Point P`);
+      setPastMeetings(p => [{
+        id: Date.now(),
+        title: meetTitle || "Réunion de chantier",
+        chantier: ch?.name || "—",
+        date: "2026-03-26",
+        duration: `${Math.floor(timer/60)} min`,
+        synthesis: synthesis,
+      }, ...p]);
+    }
+    setIsSynthesizing(false);
+  };
+
+  const fmtTime = (s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+
+  // Viewing a past meeting
+  if (viewingPast) {
+    return (
+      <>
+        <button className="chd-back" onClick={() => setViewingPast(null)}>{I.chevL} Retour</button>
+        <div className="meet-synth">
+          <div className="meet-synth-hd">{I.sparkle} {viewingPast.title}</div>
+          <div style={{padding:"8px 16px",fontSize:12,color:"var(--ts)",borderBottom:"1px solid var(--bl)"}}>
+            {viewingPast.chantier} · {viewingPast.date} · {viewingPast.duration}
+          </div>
+          <div className="meet-synth-body" style={{whiteSpace:"pre-wrap"}}>{viewingPast.synthesis}</div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* Hero */}
+      <div className="meet-hero">
+        <h2>{I.sparkle} Assistant Réunion</h2>
+        <p>Enregistrez, transcrivez, synthétisez</p>
+      </div>
+
+      {/* Config */}
+      <div className="meet-config">
+        <div className="fg" style={{marginBottom:10}}>
+          <label className="fl">Chantier concerné</label>
+          <select className="fs" value={meetChantier} onChange={e => setMeetChantier(e.target.value)}>
+            <option value="">— Aucun (réunion générale) —</option>
+            {chantiers.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+          </select>
+        </div>
+        <div className="fg" style={{marginBottom:0}}>
+          <label className="fl">Titre de la réunion</label>
+          <input className="fi" value={meetTitle} onChange={e => setMeetTitle(e.target.value)} placeholder="Ex: Point avancement semaine 13" />
+        </div>
+      </div>
+
+      {/* Record button */}
+      <div className="meet-rec-area">
+        <button className={`meet-rec-btn ${isRecording ? "recording" : "idle"}`} onClick={toggleRecording}>
+          {isRecording ? I.micOff : I.mic}
+        </button>
+        <div className="meet-rec-label">{isRecording ? "Enregistrement en cours..." : "Démarrer l'enregistrement"}</div>
+        {isRecording && (
+          <>
+            <div className="meet-rec-timer">{fmtTime(timer)}</div>
+            <div className="meet-wave">
+              {[1,2,3,4,5,6,7].map(i => <div key={i} className="meet-wave-bar" />)}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Live transcript */}
+      {transcript.length > 0 && (
+        <div className="meet-transcript">
+          <div className="meet-transcript-hd">
+            <div className="meet-transcript-title">{I.fileText} Transcription {isRecording && <span className="bg bg-d" style={{fontSize:10}}>LIVE</span>}</div>
+            <span style={{fontSize:11,color:"var(--ts)"}}>{transcript.length} phrase(s)</span>
+          </div>
+          <div className="meet-transcript-body">
+            {transcript.map((line, i) => (
+              <div className="meet-transcript-line" key={i}>{line}</div>
+            ))}
+            {liveLine && <div className="meet-transcript-live">{liveLine}...</div>}
+          </div>
+        </div>
+      )}
+
+      {/* Actions */}
+      {transcript.length > 0 && !isRecording && (
+        <div className="meet-actions">
+          <button className="meet-action-btn primary" onClick={synthesize} disabled={isSynthesizing}>
+            {I.sparkle} Synthétiser avec l'IA
+          </button>
+          <button className="meet-action-btn" onClick={() => { setTranscript([]); setSynthesis(null); setTimer(0); }}>
+            {I.trash} Effacer
+          </button>
+        </div>
+      )}
+
+      {/* AI Synthesis loading */}
+      {isSynthesizing && (
+        <div className="meet-synth">
+          <div className="meet-synth-hd">{I.sparkle} Synthèse IA</div>
+          <div className="meet-synth-loading">
+            <div className="dot" /><div className="dot" /><div className="dot" />
+            Analyse en cours...
+          </div>
+        </div>
+      )}
+
+      {/* AI Synthesis result */}
+      {synthesis && !isSynthesizing && (
+        <div className="meet-synth">
+          <div className="meet-synth-hd">{I.sparkle} Compte-rendu de réunion</div>
+          <div className="meet-synth-body" style={{whiteSpace:"pre-wrap"}}>{synthesis}</div>
+        </div>
+      )}
+
+      {/* Past meetings */}
+      <div className="meet-past">
+        <div className="sct">Réunions précédentes</div>
+        {pastMeetings.map(m => (
+          <div className="meet-past-item" key={m.id} onClick={() => setViewingPast(m)}>
+            <div className="meet-past-icon">{I.fileText}</div>
+            <div className="meet-past-info">
+              <div className="meet-past-title">{m.title}</div>
+              <div className="meet-past-meta">{m.chantier} · {m.date} · {m.duration}</div>
+            </div>
+            <div style={{color:"var(--ac)"}}>{I.chevR}</div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ═══ CHANTIER TAB (Manager) ═══
+function ChantierTab({ chantiers, tasks, onNew }) {
+  const [selectedId, setSelectedId] = useState(null);
+  const [detailTab, setDetailTab] = useState("analytics");
+
+  const ch = selectedId ? chantiers.find(c => c.id === selectedId) : null;
+
+  const getHours = (arrival, departure) => {
+    if (!departure) return 0;
+    const [ah,am] = arrival.split(":").map(Number);
+    const [dh,dm] = departure.split(":").map(Number);
+    return (dh - ah) + (dm - am) / 60;
+  };
+
+  // List view
+  if (!ch) {
+    // Compute stats per chantier
+    const chStats = chantiers.map(c => {
+      const pts = MOCK_DATA.pointages.filter(p => p.chantierId === c.id && p.departure);
+      const totalH = pts.reduce((s, p) => s + getHours(p.arrival, p.departure), 0);
+      const uniqueEmps = [...new Set(pts.map(p => p.employeeId))];
+      const uniqueDays = [...new Set(pts.map(p => p.date))];
+      const chTasks = tasks.filter(t => t.chantierId === c.id);
+      return { ...c, totalH, empCount: uniqueEmps.length, dayCount: uniqueDays.length, taskCount: chTasks.length, taskDone: chTasks.filter(t=>t.status==="completed").length };
+    });
+
+    return (
+      <>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h2 style={{fontSize:20,fontWeight:700}}>Chantiers</h2>
+          <button className="bt bt-p" style={{width:"auto",padding:"10px 18px",fontSize:13}} onClick={onNew}>{I.plus} Nouveau</button>
+        </div>
+        {chStats.map(c => (
+          <div className="cc" key={c.id} onClick={() => setSelectedId(c.id)}>
+            <div className="cch"><div className="ccd" style={{background:c.color}} /><div className="ccn">{c.name}</div></div>
+            <div className="cca">{I.mapPin}{c.address}</div>
+            <div style={{display:"flex",gap:12,paddingLeft:24,marginBottom:8}}>
+              <div style={{fontSize:12,color:"var(--ts)",display:"flex",alignItems:"center",gap:4}}>
+                {I.clock} <strong style={{color:"var(--tp)"}}>{c.totalH.toFixed(0)}h</strong> pointées
+              </div>
+              <div style={{fontSize:12,color:"var(--ts)",display:"flex",alignItems:"center",gap:4}}>
+                {I.users} {c.empCount} salarié(s)
+              </div>
+            </div>
+            <div className="ccf">
+              <span style={{padding:"4px 10px",borderRadius:"var(--rf)",fontSize:11,fontWeight:600,background:c.status==="En cours"?"var(--ol)":"var(--al)",color:c.status==="En cours"?"var(--ok)":"var(--ac)"}}>{c.status}</span>
+              {c.taskCount > 0 && <span style={{fontSize:11,color:"var(--ts)"}}>{I.taskSm} {c.taskDone}/{c.taskCount} tâches</span>}
+              {c.teams.map(t=><span key={t} style={{fontSize:12,color:"var(--ts)",display:"flex",alignItems:"center",gap:4}}>{I.users} {t}</span>)}
+            </div>
+          </div>
+        ))}
+      </>
+    );
+  }
+
+  // Detail view — analytics
+  const pts = MOCK_DATA.pointages.filter(p => p.chantierId === ch.id && p.departure);
+  const allPts = MOCK_DATA.pointages.filter(p => p.chantierId === ch.id);
+  const totalH = pts.reduce((s, p) => s + getHours(p.arrival, p.departure), 0);
+  const uniqueEmps = [...new Set(allPts.map(p => p.employeeId))];
+  const uniqueDays = [...new Set(pts.map(p => p.date))].sort();
+  const avgPerDay = uniqueDays.length > 0 ? totalH / uniqueDays.length : 0;
+  const chTasks = tasks.filter(t => t.chantierId === ch.id);
+
+  // Per employee breakdown
+  const empBreakdown = uniqueEmps.map(eId => {
+    const emp = MOCK_DATA.employees.find(e => e.id === eId);
+    const empPts = pts.filter(p => p.employeeId === eId);
+    const h = empPts.reduce((s, p) => s + getHours(p.arrival, p.departure), 0);
+    const days = [...new Set(empPts.map(p => p.date))].length;
+    const avgArr = empPts.length > 0 ? empPts.reduce((s,p) => { const [hh,mm]=p.arrival.split(":").map(Number); return s+hh*60+mm; },0) / empPts.length : 0;
+    return { emp, hours: h, days, avgArrival: avgArr, pctOfTotal: totalH > 0 ? (h / totalH) * 100 : 0 };
+  }).sort((a,b) => b.hours - a.hours);
+
+  // Daily breakdown for chart (last 7 working days)
+  const dailyData = uniqueDays.slice(-7).map(date => {
+    const dayPts = pts.filter(p => p.date === date);
+    const h = dayPts.reduce((s,p) => s + getHours(p.arrival, p.departure), 0);
+    const d = new Date(date);
+    return { date, label: d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric"}), hours: h, count: dayPts.length };
+  });
+  const maxDailyH = Math.max(...dailyData.map(d => d.hours), 1);
+
+  // Timeline (recent days with who was present)
+  const timelineData = uniqueDays.slice(-7).reverse().map(date => {
+    const dayPts = allPts.filter(p => p.date === date);
+    const h = pts.filter(p => p.date === date).reduce((s,p) => s + getHours(p.arrival, p.departure), 0);
+    return { date, emps: dayPts.map(p => p.employeeId), hours: h };
+  });
+
+  return (
+    <>
+      <button className="chd-back" onClick={() => setSelectedId(null)}>{I.chevL} Tous les chantiers</button>
+
+      {/* Hero */}
+      <div className="chd-hero" style={{background:`linear-gradient(135deg, ${ch.color}, ${ch.color}dd)`}}>
+        <div className="chd-hero-name">{ch.name}</div>
+        <div className="chd-hero-addr">{I.mapPin} {ch.address}</div>
+      </div>
+
+      {/* KPIs */}
+      <div className="chd-kpis">
+        <div className="chd-kpi">
+          <div className="chd-kpi-val" style={{color:ch.color}}>{totalH.toFixed(0)}<span className="chd-kpi-unit">h</span></div>
+          <div className="chd-kpi-label">Total pointé</div>
+        </div>
+        <div className="chd-kpi">
+          <div className="chd-kpi-val" style={{color:"var(--wa)"}}>{avgPerDay.toFixed(1)}<span className="chd-kpi-unit">h</span></div>
+          <div className="chd-kpi-label">Moy / jour</div>
+        </div>
+        <div className="chd-kpi">
+          <div className="chd-kpi-val" style={{color:"var(--ok)"}}>{uniqueEmps.length}</div>
+          <div className="chd-kpi-label">Intervenants</div>
+        </div>
+      </div>
+
+      {/* Detail tabs */}
+      <div className="tb" style={{marginBottom:14}}>
+        <button className={`ti ${detailTab==="analytics"?"a":""}`} onClick={()=>setDetailTab("analytics")}>Temps</button>
+        <button className={`ti ${detailTab==="equipe"?"a":""}`} onClick={()=>setDetailTab("equipe")}>Équipe</button>
+        <button className={`ti ${detailTab==="historique"?"a":""}`} onClick={()=>setDetailTab("historique")}>Historique</button>
+      </div>
+
+      {detailTab === "analytics" && <>
+        {/* Daily hours bar chart */}
+        <div className="chd-chart">
+          <div className="chd-chart-title">Heures pointées par jour</div>
+          <div className="chd-bars">
+            {dailyData.map((d,i) => (
+              <div className="chd-bar-col" key={i}>
+                <div className="chd-bar-wrap">
+                  <div className="chd-bar-val">{d.hours.toFixed(0)}h</div>
+                  <div className="chd-bar" style={{height:`${(d.hours/maxDailyH)*100}%`,background:ch.color,opacity: d.date === "2026-03-26" ? 1 : 0.6}} />
+                </div>
+                <div className="chd-bar-label" style={{fontWeight: d.date==="2026-03-26"?700:400, color: d.date==="2026-03-26"?"var(--ac)":"var(--tt)"}}>{d.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Summary stats */}
+        <div className="cd" style={{padding:14}}>
+          <div className="ch"><span className="ct">Résumé</span></div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
+              <span style={{color:"var(--ts)"}}>Jours travaillés</span>
+              <strong>{uniqueDays.length} jours</strong>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
+              <span style={{color:"var(--ts)"}}>Heures totales</span>
+              <strong>{totalH.toFixed(1)}h</strong>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
+              <span style={{color:"var(--ts)"}}>Moy. par salarié</span>
+              <strong>{uniqueEmps.length > 0 ? (totalH / uniqueEmps.length).toFixed(1) : 0}h</strong>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
+              <span style={{color:"var(--ts)"}}>Tâches terminées</span>
+              <strong>{chTasks.filter(t=>t.status==="completed").length} / {chTasks.length}</strong>
+            </div>
+          </div>
+        </div>
+      </>}
+
+      {detailTab === "equipe" && <>
+        {/* Per employee breakdown */}
+        {empBreakdown.map(({emp, hours, days, avgArrival, pctOfTotal}) => (
+          <div className="chd-emp-detail" key={emp.id}>
+            <div className="chd-emp-header">
+              <div className="ea" style={{background:ch.color}}>{emp.avatar}</div>
+              <div className="ei">
+                <div className="en">{emp.name}</div>
+                <div className="erl">{emp.role}</div>
+              </div>
+              <div className="et">
+                <div className="etv">{hours.toFixed(1)}h</div>
+                <div className="etl">{days} jours</div>
+              </div>
+            </div>
+            {/* Contribution bar */}
+            <div style={{marginBottom:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"var(--ts)",marginBottom:4}}>
+                <span>Part du total</span>
+                <span style={{fontWeight:600}}>{pctOfTotal.toFixed(0)}%</span>
+              </div>
+              <div className="chd-emp-bar-track">
+                <div className="chd-emp-bar-fill" style={{width:`${pctOfTotal}%`,background:ch.color}}>{pctOfTotal.toFixed(0)}%</div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:16,fontSize:12,color:"var(--ts)"}}>
+              <span>Moy. arrivée : <strong style={{color:"var(--tp)"}}>{Math.floor(avgArrival/60)}h{String(Math.round(avgArrival%60)).padStart(2,"0")}</strong></span>
+              <span>Moy/jour : <strong style={{color:"var(--tp)"}}>{days > 0 ? (hours/days).toFixed(1) : 0}h</strong></span>
+            </div>
+          </div>
+        ))}
+      </>}
+
+      {detailTab === "historique" && <>
+        {/* Timeline */}
+        <div className="chd-timeline">
+          <div className="chd-chart-title">Derniers jours</div>
+          {timelineData.map((day, i) => {
+            const d = new Date(day.date);
+            return (
+              <div className="chd-tl-row" key={i}>
+                <div className="chd-tl-date">
+                  {d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric"})}
+                </div>
+                <div className="chd-tl-avatars" style={{display:"flex"}}>
+                  {day.emps.map(eId => {
+                    const emp = MOCK_DATA.employees.find(e => e.id === eId);
+                    return <div key={eId} className="chd-tl-avatar" style={{background:ch.color}}>{emp?.avatar}</div>;
+                  })}
+                </div>
+                <div className="chd-tl-hours">{day.hours.toFixed(1)}h</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Tasks on this chantier */}
+        {chTasks.length > 0 && <div className="cd" style={{padding:14}}>
+          <div className="ch"><span className="ct">Tâches ({chTasks.length})</span></div>
+          {chTasks.map(t => {
+            const emp = MOCK_DATA.employees.find(e => e.id === t.assigneeId);
+            return (
+              <div className="er" key={t.id}>
+                <div className={`mtt-task-pri ${t.priority}`} />
+                <div className="ei">
+                  <div className="en" style={{fontSize:13}}>{t.title}</div>
+                  <div className="erl">{emp?.name} · {t.date}</div>
+                </div>
+                <div className={`task-status-pill ${t.status === "completed" ? "completed" : t.status === "accepted" ? "accepted" : "new"}`} style={{fontSize:10}}>
+                  {t.status === "completed" ? "Fait" : t.status === "accepted" ? "En cours" : "En attente"}
+                </div>
+              </div>
+            );
+          })}
+        </div>}
+      </>}
+    </>
+  );
+}
+
+// ═══ MANAGER TASK TRACKER ═══
+function MgrTaskTracker({ tasks, chantiers }) {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [groupBy, setGroupBy] = useState("chantier");
+  const [expandedTask, setExpandedTask] = useState(null);
+
+  const today = "2026-03-26";
+  const pending = tasks.filter(t => t.status === "new");
+  const inProgress = tasks.filter(t => t.status === "accepted");
+  const completed = tasks.filter(t => t.status === "completed");
+  const overdue = tasks.filter(t => t.status !== "completed" && t.deadline && t.deadline < today);
+
+  const filtered = statusFilter === "all" ? tasks
+    : statusFilter === "pending" ? pending
+    : statusFilter === "progress" ? inProgress
+    : statusFilter === "done" ? completed
+    : statusFilter === "overdue" ? overdue
+    : tasks;
+
+  // Group
+  const grouped = useMemo(() => {
+    const groups = {};
+    filtered.forEach(t => {
+      let key, label, color, sortKey;
+      if (groupBy === "chantier") {
+        const ch = chantiers.find(c => c.id === t.chantierId);
+        key = t.chantierId || "none";
+        label = ch?.name || "Sans chantier";
+        color = ch?.color || "#94a3b8";
+        sortKey = label;
+      } else if (groupBy === "collaborateur") {
+        const emp = MOCK_DATA.employees.find(e => e.id === t.assigneeId);
+        key = t.assigneeId;
+        label = emp?.name || "Inconnu";
+        color = "#6366f1";
+        sortKey = label;
+      } else {
+        key = t.date;
+        label = new Date(t.date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+        color = "#2563eb";
+        sortKey = t.date;
+      }
+      if (!groups[key]) groups[key] = { label, color, sortKey, tasks: [] };
+      groups[key].tasks.push(t);
+    });
+    return Object.values(groups).sort((a, b) => {
+      if (groupBy === "date") return b.sortKey.localeCompare(a.sortKey);
+      return a.sortKey.localeCompare(b.sortKey);
+    });
+  }, [filtered, groupBy, chantiers]);
+
+  const getDeadlineInfo = (d) => {
+    if (!d) return { cls: "ok", label: "—" };
+    if (d < today) return { cls: "urgent", label: "En retard" };
+    if (d === today) return { cls: "urgent", label: "Aujourd'hui" };
+    const diff = Math.ceil((new Date(d) - new Date(today)) / 86400000);
+    if (diff <= 2) return { cls: "soon", label: `J-${diff}` };
+    return { cls: "ok", label: new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) };
+  };
+
+  const respLabel = (t) => {
+    if (!t.response) return null;
+    if (t.response === "oui") return { text: "Oui", cls: "oui" };
+    if (t.response === "non") return { text: "Non", cls: "non" };
+    if (t.response === "done") return { text: "Fait", cls: "oui" };
+    if (t.response === "notdone") return { text: "Pas encore", cls: "non" };
+    if (t.response === "photo_sent") return { text: "Photo reçue", cls: "photo" };
+    return { text: t.response.length > 25 ? t.response.slice(0, 25) + "…" : t.response, cls: "msg" };
+  };
+
+  const statusPill = (s) => {
+    if (s === "new") return <div className="task-status-pill new">En attente</div>;
+    if (s === "accepted") return <div className="task-status-pill accepted">En cours</div>;
+    return <div className="task-status-pill completed">{I.checkCircle} Terminé</div>;
+  };
+
+  return (
+    <>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:4}}>Suivi des tâches</h2>
+      <p style={{fontSize:13,color:"var(--ts)",marginBottom:14}}>{tasks.length} tâche(s) au total</p>
+
+      {/* Stats */}
+      <div className="mtt-stats">
+        {[
+          { id: "all", label: "Toutes", count: tasks.length, color: "var(--tp)" },
+          { id: "pending", label: "En attente", count: pending.length, color: "var(--ac)" },
+          { id: "progress", label: "En cours", count: inProgress.length, color: "var(--wa)" },
+          { id: "done", label: "Terminées", count: completed.length, color: "var(--ok)" },
+        ].map(s => (
+          <div key={s.id} className={`mtt-stat ${statusFilter === s.id ? "active" : ""}`} onClick={() => setStatusFilter(s.id)}>
+            <div className="mtt-sv" style={{color: s.color}}>{s.count}</div>
+            <div className="mtt-sl">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {overdue.length > 0 && statusFilter !== "done" && (
+        <div className="task-overdue-banner" style={{cursor:"pointer"}} onClick={() => setStatusFilter("overdue")}>
+          {I.alert} {overdue.length} tâche(s) en retard
+        </div>
+      )}
+
+      {/* Group by selector */}
+      <div className="mtt-sort-bar">
+        {[
+          { id: "chantier", label: "Par chantier" },
+          { id: "collaborateur", label: "Par collaborateur" },
+          { id: "date", label: "Par date" },
+        ].map(g => (
+          <button key={g.id} className={`mtt-sort-btn ${groupBy === g.id ? "active" : ""}`} onClick={() => setGroupBy(g.id)}>
+            {g.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Task groups */}
+      {filtered.length === 0 && (
+        <div className="mtt-empty">{I.task}<p style={{marginTop:8,fontSize:14}}>Aucune tâche dans cette catégorie</p></div>
+      )}
+
+      {grouped.map((group, gi) => (
+        <div key={gi} style={{marginBottom:16}}>
+          <div className="mtt-group-hd">
+            {groupBy === "chantier" && <div className="ccd" style={{background:group.color}} />}
+            {groupBy === "collaborateur" && <div className="ea" style={{background:group.color,width:22,height:22,fontSize:8,borderRadius:6}}>
+              {group.label.split(" ").map(w=>w[0]).join("")}
+            </div>}
+            {groupBy === "date" && <span style={{color:"var(--ac)"}}>{I.calendar}</span>}
+            <span>{group.label}</span>
+            <span style={{fontSize:11,color:"var(--tt)",fontWeight:400}}>{group.tasks.length}</span>
+          </div>
+
+          {group.tasks.map(t => {
+            const emp = MOCK_DATA.employees.find(e => e.id === t.assigneeId);
+            const ch = chantiers.find(c => c.id === t.chantierId);
+            const dl = getDeadlineInfo(t.deadline);
+            const resp = respLabel(t);
+            const isExpanded = expandedTask === t.id;
+            const isOverdue = t.status !== "completed" && t.deadline && t.deadline < today;
+
+            return (
+              <div key={t.id}>
+                <div className={`mtt-task-row ${isOverdue ? "overdue" : ""}`} onClick={() => setExpandedTask(isExpanded ? null : t.id)}>
+                  <div className={`mtt-task-pri ${t.priority}`} />
+                  <div className="mtt-task-info">
+                    <div className="mtt-task-title">{t.title}</div>
+                    <div className="mtt-task-sub">
+                      {groupBy !== "collaborateur" && <span>{I.user} {emp?.name}</span>}
+                      {groupBy !== "chantier" && ch && <span>{I.building} {ch.name.split(" ").slice(0,2).join(" ")}</span>}
+                      {groupBy !== "date" && <span>{I.calendar} {t.date}</span>}
+                      <span className={`task-deadline ${dl.cls}`} style={{padding:"2px 6px",fontSize:10}}>{dl.label}</span>
+                    </div>
+                    {resp && (
+                      <div className={`mtt-resp-preview ${resp.cls}`}>
+                        {resp.cls === "oui" && I.checkCircle}
+                        {resp.cls === "non" && I.x}
+                        {resp.cls === "photo" && I.camera}
+                        {resp.cls === "msg" && I.send}
+                        {resp.text}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mtt-task-status">{statusPill(t.status)}</div>
+                </div>
+
+                {isExpanded && (
+                  <div className="mtt-detail">
+                    <div className="mtt-detail-row">
+                      <span className="mtt-detail-label">Assigné à</span>
+                      <span className="mtt-detail-val">{emp?.name}</span>
+                    </div>
+                    {ch && <div className="mtt-detail-row">
+                      <span className="mtt-detail-label">Chantier</span>
+                      <span className="mtt-detail-val">{ch.name}</span>
+                    </div>}
+                    <div className="mtt-detail-row">
+                      <span className="mtt-detail-label">Date</span>
+                      <span className="mtt-detail-val">{new Date(t.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}</span>
+                    </div>
+                    <div className="mtt-detail-row">
+                      <span className="mtt-detail-label">Échéance</span>
+                      <span className={`mtt-detail-val`} style={{color: dl.cls==="urgent"?"var(--da)":dl.cls==="soon"?"var(--wa)":"var(--ts)"}}>{t.deadline ? new Date(t.deadline).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"}) : "Aucune"}</span>
+                    </div>
+                    <div className="mtt-detail-row">
+                      <span className="mtt-detail-label">Priorité</span>
+                      <span className="mtt-detail-val" style={{display:"flex",alignItems:"center",gap:4}}>
+                        <span className={`mtt-task-pri ${t.priority}`} /> {t.priority==="high"?"Haute":t.priority==="medium"?"Moyenne":"Basse"}
+                      </span>
+                    </div>
+                    <div className="mtt-detail-row">
+                      <span className="mtt-detail-label">Réponse attendue</span>
+                      <span className="mtt-detail-val">{t.responseType==="yesno"?"Oui/Non":t.responseType==="done"?"Fait/Pas fait":t.responseType==="photo"?"Photo":t.responseType==="message"?"Message":"—"}</span>
+                    </div>
+                    {t.description && (
+                      <div style={{marginTop:8,padding:"8px 10px",background:"var(--bgc)",borderRadius:8,fontSize:12,color:"var(--ts)",lineHeight:1.4}}>{t.description}</div>
+                    )}
+                    {resp && (
+                      <div style={{marginTop:8}}>
+                        <div style={{fontSize:11,fontWeight:600,color:"var(--ts)",marginBottom:4}}>RÉPONSE REÇUE</div>
+                        <div className={`task-response-done ${resp.cls === "oui" || resp.cls === "done" ? "yes" : resp.cls === "non" ? "no" : resp.cls === "photo" ? "photo" : "msg"}`} style={{fontSize:13}}>
+                          {resp.text}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{fontSize:10,color:"var(--tt)",marginTop:8}}>Créée le {t.createdAt} par {t.createdBy}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </>
+  );
+}
+
+// ═══ MANAGER APP ═══
+function MgrApp({ user, onLogout, tasks, onAddTask }) {
+  const [tab, setTab] = useState("dashboard");
+  const [showNC, setShowNC] = useState(false);
+  const [succ, setSucc] = useState(null);
+  const [stab, setStab] = useState("chantier");
+  const [cgs, setCgs] = useState(MOCK_DATA.conges);
+  const [chs, setChs] = useState(MOCK_DATA.chantiers);
+  const [asgn, setAsgn] = useState(MOCK_DATA.planningAssignments);
+  const now = useTime();
+
+  const hCg = (id, act) => { setCgs(p => p.map(c => c.id===id?{...c,status:act==="approve"?"Validé":"Refusé"}:c)); setSucc({text:act==="approve"?"Congé validé":"Congé refusé",sub:"Le salarié sera notifié"}); };
+  const hAsgn = (date, empIds, chId) => {
+    const nw = empIds.map((e,i)=>({id:Date.now()+i,employeeId:e,chantierId:chId,date}));
+    setAsgn(p=>[...p,...nw]);
+    const ch = chs.find(c=>c.id===chId);
+    setSucc({text:"Affectation enregistrée",sub:`${empIds.length} salarié(s) → ${ch?.name}`});
+  };
+  const hReassign = (date, empId, fromChId, toChId) => {
+    setAsgn(p => p.map(a => (a.date===date && a.employeeId===empId && a.chantierId===fromChId) ? {...a, chantierId: toChId} : a));
+    const toCh = chs.find(c=>c.id===toChId);
+    const emp = MOCK_DATA.employees.find(e=>e.id===empId);
+    setSucc({text:"Réaffectation effectuée",sub:`${emp?.name} → ${toCh?.name}`});
+  };
+  const hRemoveAssign = (date, empId) => {
+    setAsgn(p => p.filter(a => !(a.date===date && a.employeeId===empId)));
+    const emp = MOCK_DATA.employees.find(e=>e.id===empId);
+    setSucc({text:"Affectation retirée",sub:`${emp?.name} est maintenant disponible`});
+  };
+  const hAddConge = ({employeeId, type, dateStart, dateEnd, reason}) => {
+    setCgs(p => [...p, {id:Date.now(), employeeId, type, dateStart, dateEnd, status:"Validé", reason: reason || "Posé par le manager"}]);
+    // Also remove assignments for this employee on the congé dates
+    const start = dateStart, end = dateEnd;
+    setAsgn(p => p.filter(a => !(a.employeeId === employeeId && a.date >= start && a.date <= end)));
+    const emp = MOCK_DATA.employees.find(e=>e.id===employeeId);
+    setSucc({text:"Congé enregistré",sub:`${emp?.name} — ${type} du ${dateStart} au ${dateEnd}`});
+  };
+  const hAddTask = (task) => {
+    onAddTask(task);
+    const emp = MOCK_DATA.employees.find(e=>e.id===task.assigneeId);
+    setSucc({text:"Tâche envoyée",sub:`${emp?.name} — ${task.title}`});
+  };
+  const crCh = (e) => { e.preventDefault(); const fd=new FormData(e.target); setChs(p=>[...p,{id:Date.now(),name:fd.get("name"),address:fd.get("address"),status:"Planifié",teams:[fd.get("team")],lat:45.77,lng:4.85,color:"#8b5cf6"}]); setShowNC(false); setSucc({text:"Chantier créé",sub:fd.get("name")}); };
+
+  const actP = MOCK_DATA.pointages.filter(p=>p.date==="2026-03-26"&&!p.departure);
+  const anom = MOCK_DATA.anomalies;
+  const pendingTaskCount = tasks.filter(t => t.status !== "completed").length;
+  const tabs = [
+    {id:"dashboard",label:"Accueil",icon:I.home},
+    {id:"calendrier",label:"Planning",icon:I.calendar},
+    {id:"temps",label:"Temps",icon:I.barChart},
+    {id:"taches",label:"Tâches",icon:I.task,badge:pendingTaskCount>0},
+    {id:"chantiers",label:"Chantiers",icon:I.building},
+    {id:"reunion",label:"IA",icon:I.sparkle},
+  ];
+
+  return (
+    <div className="app">
+      <Hd user={user} role="manager" onLogout={onLogout} />
+      <div className="pg">
+
+        {tab==="dashboard" && <>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:14,color:"var(--ts)"}}>{now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div>
+            <h2 style={{fontSize:22,fontWeight:700,letterSpacing:-.5,marginTop:4}}>Bonjour, {user.name.split(" ")[0]}</h2>
+          </div>
+          <div className="sr">
+            <div className="sb"><div className="sbv" style={{color:"var(--ok)"}}>{actP.length}</div><div className="sbl">En poste</div></div>
+            <div className="sb"><div className="sbv" style={{color:"var(--ac)"}}>{chs.filter(c=>c.status==="En cours").length}</div><div className="sbl">Chantiers</div></div>
+            <div className="sb"><div className="sbv" style={{color:"var(--da)"}}>{anom.length}</div><div className="sbl">Anomalies</div></div>
+          </div>
+          <div className="cd">
+            <div className="ch"><span className="ct">Présences aujourd'hui</span></div>
+            {actP.map(p=>{const emp=MOCK_DATA.employees.find(e=>e.id===p.employeeId);const ch=MOCK_DATA.chantiers.find(c=>c.id===p.chantierId);return(
+              <div className="er" key={p.id}><div className="ea" style={{background:ch?.color||"#2563eb"}}>{emp.avatar}</div><div className="ei"><div className="en">{emp.name}</div><div className="erl">{ch?.name}</div></div><div className="et"><div className="etv">{p.arrival}</div><div className="etl">Arrivée</div></div></div>
+            );})}
+          </div>
+          {anom.length>0 && <div className="cd"><div className="ch"><span className="ct">Anomalies du jour</span></div>
+            {anom.map(a=>{const emp=MOCK_DATA.employees.find(e=>e.id===a.employeeId);return(<div className={`ai ${a.severity==="warning"?"w":"e"}`} key={a.id}><div className={`aico ${a.severity==="warning"?"w":"e"}`}>{I.alert}</div><div className="ait"><h4>{a.type}</h4><p>{emp.name} — {a.chantier}</p></div></div>);})}
+          </div>}
+          <div className="cd">
+            <div className="ch"><span className="ct">Congés en attente</span><span className="bg bg-w">{cgs.filter(c=>c.status==="En attente").length}</span></div>
+            {cgs.filter(c=>c.status==="En attente").map(c=>{const emp=MOCK_DATA.employees.find(e=>e.id===c.employeeId);return(
+              <div className="cgi" key={c.id}><div className="cgi-i"><h4>{emp?.name} — {c.type}</h4><p>{c.dateStart} → {c.dateEnd}</p></div><div className="ca"><button className="cab ap" onClick={()=>hCg(c.id,"approve")}>{I.check}</button><button className="cab rj" onClick={()=>hCg(c.id,"reject")}>{I.x}</button></div></div>
+            );})}
+          </div>
+        </>}
+
+        {tab==="calendrier" && <Cal conges={cgs} chantiers={chs} assignments={asgn} onAssign={hAsgn} onCongeAction={hCg} onReassign={hReassign} onRemoveAssign={hRemoveAssign} onAddConge={hAddConge} onAddTask={hAddTask} />}
+
+        {/* ── TASK TRACKER ── */}
+        {tab==="taches" && <MgrTaskTracker tasks={tasks} chantiers={chs} />}
+
+        {tab==="temps" && <Timesheet conges={cgs} />}
+
+        {tab==="chantiers" && <ChantierTab chantiers={chs} tasks={tasks} onNew={() => setShowNC(true)} />}
+
+        {tab==="reunion" && <MeetingAssistant chantiers={chs} />}
+      </div>
+      <BN tabs={tabs} active={tab} onNav={setTab} />
+      {showNC && <Mod onClose={()=>setShowNC(false)}>
+        <h3 className="mt">Nouveau chantier</h3>
+        <form onSubmit={crCh}>
+          <div className="fg"><label className="fl">Nom du chantier</label><input type="text" className="fi" name="name" placeholder="Ex: Villa Les Roses" required /></div>
+          <div className="fg"><label className="fl">Adresse</label><input type="text" className="fi" name="address" placeholder="Adresse complète" required /></div>
+          <div className="fg"><label className="fl">Équipe assignée</label><select className="fs" name="team"><option value="Équipe A">Équipe A</option><option value="Équipe B">Équipe B</option><option value="Équipe C">Équipe C</option></select></div>
+          <div className="fg"><label className="fl">Date de début</label><input type="date" className="fi" name="startDate" required /></div>
+          <button type="submit" className="bt bt-p">{I.check} Créer le chantier</button>
+        </form>
+      </Mod>}
+      {succ && <Succ text={succ.text} sub={succ.sub} onDone={()=>setSucc(null)} />}
+    </div>
+  );
+}
+
+
+// ─── MAIN ───
+function App() {
+  const [role, setRole] = useState(null);
+  const [user, setUser] = useState(null);
+  const [tasks, setTasks] = useState([
+    { id: 1, assigneeId: 1, chantierId: 1, date: "2026-03-26", title: "Vérifier coffrage escalier B", description: "Contrôler l'alignement du coffrage.", priority: "high", status: "new", createdBy: "Marie Laurent", createdAt: "2026-03-26 08:15", responseType: "photo", deadline: "2026-03-26", response: null },
+    { id: 2, assigneeId: 2, chantierId: 1, date: "2026-03-26", title: "Tirer les câbles RJ45 étage 2", description: "Passage câbles réseau.", priority: "medium", status: "accepted", createdBy: "Marie Laurent", createdAt: "2026-03-25 16:00", responseType: "yesno", deadline: "2026-03-27", response: null },
+    { id: 3, assigneeId: 1, chantierId: 1, date: "2026-03-25", title: "Réceptionner livraison", description: "Livraison 14h.", priority: "low", status: "completed", createdBy: "Marie Laurent", createdAt: "2026-03-25 07:30", responseType: "done", deadline: "2026-03-25", response: "done" },
+    { id: 4, assigneeId: 1, chantierId: 1, date: "2026-03-26", title: "Confirmer dispo grue", description: "Confirmation loueur.", priority: "high", status: "new", createdBy: "Marie Laurent", createdAt: "2026-03-26 09:00", responseType: "yesno", deadline: "2026-03-26", response: null },
+    { id: 5, assigneeId: 1, chantierId: 1, date: "2026-03-26", title: "Fissure mur porteur ?", description: "Fissure côté nord.", priority: "medium", status: "new", createdBy: "Marie Laurent", createdAt: "2026-03-26 10:30", responseType: "message", deadline: "2026-03-27", response: null },
+  ]);
+  const addTask = (task) => setTasks(p => [...p, { ...task, id: Date.now(), status: "new", createdAt: new Date().toLocaleString("fr-FR") }]);
+  const updateTask = (id, updates) => setTasks(p => p.map(t => t.id === id ? { ...t, ...updates } : t));
+  const login = (r) => { if (r==="employee") { setUser(MOCK_DATA.employees[0]); setRole("employee"); } else { setUser({id:99,name:"Marie Laurent",role:"Manager",avatar:"ML"}); setRole("manager"); } };
+  const logout = () => { setRole(null); setUser(null); };
+
+  if (!role) return (
+    <div className="app">
+      <style>{css}</style>
+      <div className="login">
+        <div className="l-logo"><svg width="36" height="36" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <div className="l-title">ChantierTrack</div>
+        <div className="l-sub">Pointage intelligent de chantier</div>
+        <div className="l-btns">
+          <button className="l-btn" onClick={()=>login("employee")}><div className="l-ico emp">{I.user}</div><div className="l-txt"><span>Accès Salarié</span><span className="l-role">Pointer, planning & congés</span></div></button>
+          <button className="l-btn" onClick={()=>login("manager")}><div className="l-ico mgr">{I.users}</div><div className="l-txt"><span>Accès Manager</span><span className="l-role">Calendrier, chantiers & équipes</span></div></button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (<div><style>{css}</style>{role==="employee"?<EmpApp user={user} onLogout={logout} tasks={tasks} onUpdateTask={updateTask} />:<MgrApp user={user} onLogout={logout} tasks={tasks} onAddTask={addTask} />}</div>);
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
