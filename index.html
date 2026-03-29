@@ -2741,6 +2741,7 @@ function App() {
         <div className="l-btns">
           <button className="l-btn" onClick={()=>login("employee")}><div className="l-ico emp">{I.user}</div><div className="l-txt"><span>Accès Salarié</span><span className="l-role">Pointer, planning & congés</span></div></button>
           <button className="l-btn" onClick={()=>login("manager")}><div className="l-ico mgr">{I.users}</div><div className="l-txt"><span>Accès Manager</span><span className="l-role">Calendrier, chantiers & équipes</span></div></button>
+          <a href="https://chantiertrack-gestionnaire-kjqw.vercel.app/" target="_blank" className="l-btn" style={{textDecoration:"none"}}><div className="l-ico" style={{background:"linear-gradient(135deg,#7c3aed,#a78bfa)"}}>{I.barChart}</div><div className="l-txt"><span>Accès Gestionnaire</span><span className="l-role">Paie, temps & analytique</span></div></a>
         </div>
       </div>
     </div>
